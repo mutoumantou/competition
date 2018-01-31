@@ -10,13 +10,13 @@ LDIR = ../lib
 
 LIBS = -lm
 
-_DEPS = 
+_DEPS = GUI_master.hpp
 DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
 
-_OBJ = hellomake.o
+_OBJ = hellomake.o GUI_master.o
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
-$(ODIR)/%.o: %.c $(DEPS)
+$(ODIR)/%.o: %.cpp $(DEPS)
 	$(CC) -c $(GTKFLAGS) -o $@ $< $(GTKLIBS) $(CFLAGS)
 
 hellomake: $(OBJ)
