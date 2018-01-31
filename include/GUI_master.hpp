@@ -1,11 +1,9 @@
 #ifndef GUIMASTER
 #define GUIMASTER
 
-#include <pthread.h>                    // for using thread
-#include <stdio.h>                      // for printf
-#include <time.h>
+#include "general_header.hpp"
 
-void GUI_master_activate (void);        // start updating GUI
+void GUI_master_activate (GtkImage *vidWindow, GtkLabel *timeLabel);        // start updating GUI
 void GUI_master_deactivate(void);       // stop updating GUI
 
 #endif

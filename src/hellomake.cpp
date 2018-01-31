@@ -1,4 +1,4 @@
-#include <gtk/gtk.h>
+#include "general_header.hpp"
 #include "GUI_master.hpp"       // thread update GUI
 
 static void activate (GtkApplication *app, gpointer user_data) {
@@ -21,7 +21,7 @@ static void activate (GtkApplication *app, gpointer user_data) {
 
   gtk_widget_show (window);
 
-  GUI_master_activate();
+  GUI_master_activate (vidWindow, timeLabel);
 }
 
 static void on_window_destroy (GtkApplication *app, gpointer user_data) {

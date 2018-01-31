@@ -10,7 +10,7 @@ LDIR = ../lib
 
 LIBS = -lm
 
-_DEPS = GUI_master.hpp
+_DEPS = GUI_master.hpp general_header.hpp
 DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
 
 _OBJ = hellomake.o GUI_master.o
