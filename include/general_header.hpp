@@ -8,4 +8,6 @@
 #include <errno.h>
 #include <sys/time.h>
 
+void my_sleep (unsigned msec);          // sleep
+
 #endif

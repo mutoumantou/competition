@@ -3,17 +3,17 @@ CC = g++
 CFLAGS=-I$(IDIR)
 
 GTKFLAGS = `pkg-config --cflags gtk+-3.0`
-GTKLIBS  = `pkg-config --libs gtk+-3.0`
+GTKLIBS  = `pkg-config --libs gtk+-3.0` -rdynamic
 
 ODIR = obj
 LDIR = ../lib
 
-LIBS = -lm
+LIBS = -lm -ldc1394
 
-_DEPS = GUI_master.hpp general_header.hpp
+_DEPS = GUI_master.hpp general_header.hpp vision.hpp FWcamera.hpp
 DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
 
-_OBJ = hellomake.o GUI_master.o
+_OBJ = hellomake.o GUI_master.o vision.o FWcamera.o general_fun.o
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
 $(ODIR)/%.o: %.cpp $(DEPS)
