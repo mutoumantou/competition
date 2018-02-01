@@ -3,7 +3,7 @@ CC = g++
 CFLAGS=-I$(IDIR)
 
 GTKFLAGS = `pkg-config --cflags gtk+-3.0`
-GTKLIBS  = `pkg-config --libs gtk+-3.0` -rdynamic
+GTKLIBS  = `pkg-config --libs gtk+-3.0` `pkg-config --cflags --libs opencv --libs` -rdynamic
 
 ODIR = obj
 LDIR = ../lib

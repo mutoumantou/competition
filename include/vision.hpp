@@ -11,5 +11,6 @@ using namespace cv;
 /* Functions */
 void camera_activate (void);
 void camera_deactivate (void);
+void get_present_image ( Mat * container );
 
 #endif

@@ -4,11 +4,19 @@ static int fThread = 0;             // flag for GUI update running
 static int fCam    = 0;             // flag for camera on/off
 static GtkImage *GUIImage;          // pointer to video window
 static GtkLabel *GUILabel;          // pointer to time display label
+static Mat presentFrame;            // present frame to display
 
 static gboolean update_vid_window (gpointer userdata) {
-    //Mat img_m_color = getImage();
-    //gtk_image_set_from_pixbuf(GUIImage, gdk_pixbuf_new_from_data(img_m_color.data, GDK_COLORSPACE_RGB, false, 8,
-    //                          img_m_color.cols, img_m_color.rows, img_m_color.step, NULL, NULL));
+    get_present_image ( & presentFrame );
+    //if (presentFrame.data == NULL)
+    //    printf("null then\n");
+    //else
+    //    printf("not null\n");
+    printf("frame size (%d, %d)\n", presentFrame.rows, presentFrame.cols);
+    gtk_image_set_from_pixbuf (GUIImage,
+                               gdk_pixbuf_new_from_data(presentFrame.data, GDK_COLORSPACE_RGB,
+                                                        false, 8, presentFrame.cols, presentFrame.rows,
+                                                        presentFrame.step, NULL, NULL));
     return G_SOURCE_REMOVE;
 }
 
@@ -66,9 +74,7 @@ void GUI_master_deactivate(void) {
 }
 
 // start/stop camera stream
-
 void on_toggle_camera_stream_toggled (GtkToggleButton *togglebutton, gpointer data) {
-
     int d = gtk_toggle_button_get_active (togglebutton);
     printf("toggle button value %d.\n", d);
     if (d) {
@@ -76,7 +82,6 @@ void on_toggle_camera_stream_toggled (GtkToggleButton *togglebutton, gpointer da
     } else {
         camera_deactivate ();
     }
-    my_sleep(100);
+    my_sleep(1000);
     fCam = d;
-
 }

@@ -12,7 +12,8 @@ static void activate (GtkApplication *app, gpointer user_data) {
 
   builder = gtk_builder_new_from_file ("GUI.glade");
   window  = GTK_WIDGET (gtk_builder_get_object (builder, "mainWindow"));
-  vidWindow = GTK_IMAGE  (gtk_builder_get_object (builder, "videoWindow")); // get video window handler
+  vidWindow = GTK_IMAGE  (gtk_builder_get_object (builder, "vidWindow")); // get video window handler
+
   timeLabel = GTK_LABEL (gtk_builder_get_object (builder, "timeLabel"));    // get time display label handler
   visionButton = GTK_TOGGLE_BUTTON (gtk_builder_get_object (builder, "toggle_camera_stream"));
 

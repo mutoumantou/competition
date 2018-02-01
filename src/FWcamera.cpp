@@ -236,13 +236,11 @@ unsigned char * FWcamera::grabAframe(void) {
 		return mFrame2->image;
 }
 
-bool FWcamera::isGrabbingVideo(void)
-{
+bool FWcamera::isGrabbingVideo(void) {
 	return mIsGrabbingVideo;
 }
 
-void FWcamera::stopGrabbingVideo()
-{
+void FWcamera::stopGrabbingVideo() {
 	printf("Stopping iso transmission...\n");
 	dc1394error_t err;
 
