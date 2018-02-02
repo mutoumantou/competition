@@ -7,7 +7,7 @@
 #include <gtk/gtk.h>
 #include <errno.h>
 #include <sys/time.h>
-
+#include <iostream>
 void my_sleep (unsigned msec);          // sleep
 
 #endif
