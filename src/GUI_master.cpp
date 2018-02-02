@@ -12,7 +12,7 @@ static gboolean update_vid_window (gpointer userdata) {
     //    printf("null then\n");
     //else
     //    printf("not null\n");
-    printf("frame size (%d, %d)\n", presentFrame.rows, presentFrame.cols);
+    //printf("frame size (%d, %d), depth %d channel %d\n", presentFrame.rows, presentFrame.cols, presentFrame.depth(), presentFrame.channels());
     gtk_image_set_from_pixbuf (GUIImage,
                                gdk_pixbuf_new_from_data(presentFrame.data, GDK_COLORSPACE_RGB,
                                                         false, 8, presentFrame.cols, presentFrame.rows,
