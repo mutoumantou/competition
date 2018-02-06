@@ -10,7 +10,8 @@ static int fCamera = 0;                                 // 0: workstation, using
 static void* video_stream_THREAD ( void *threadid ) {
     printf("at the start of video_stream_THREAD.\n");
     /* use laptop webcamera instead of FWcamera */
-    if ( !fCamera ) {
+    if ( fCamera ) {
+        /*
         VideoCapture cap;               // may cause crash problem of GTK2.0 conflick with GTK3.0 on workstation computer
         Mat tempFrame = Mat(480,640,CV_8UC3);
         // open the default camera, use something different from 0 otherwise;
@@ -46,12 +47,14 @@ static void* video_stream_THREAD ( void *threadid ) {
 
               //if( waitKey(10) == 27 ) break; // stop capturing by pressing ESC
             my_sleep(30);
-        }
+        } */
     } else {
         unsigned char *inImage;
-        while (fThread) {
 
+        while (fThread) {
+            //printf("before grab\n");
             inImage = cam.grabAframe();
+            //printf("after grab\n");
             if(inImage == NULL)	{
                 g_print("Error in firewire stream! Reattempting...\n");
                 my_sleep(1); 																										// I don't know what the wait delay should be
@@ -77,7 +80,7 @@ static void* video_stream_THREAD ( void *threadid ) {
 }
 
 void camera_activate (void) {
-    if ( fCamera ) {
+    if ( !fCamera ) {
         if( !cam.initialize() ) {
             g_print("Error: camera could not be found in initVision().\n");
             return;
