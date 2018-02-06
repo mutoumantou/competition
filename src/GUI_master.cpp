@@ -52,7 +52,7 @@ static void* GUI_update_THREAD ( void *threadid ) {
         if (fCam) {
             g_main_context_invoke (NULL, update_vid_window, NULL);
         }
-        my_sleep (16);
+        my_sleep (30);			// correspond to 30 Hz camera refresh rate
     }
     printf("at the end of GUI_update_THREAD.\n");
 }
