@@ -8,6 +8,12 @@
 #include <errno.h>
 #include <sys/time.h>
 #include <iostream>
-void my_sleep (unsigned msec);          // sleep
+#include <math.h>
 
+#define sind(x) (sin(fmod((x),360) * M_PI / 180))
+#define cosd(x) (cos(fmod((x),360) * M_PI / 180))
+#define tand(x) (tan(fmod((x),360) * M_PI / 180))
+
+void my_sleep (unsigned msec);          // sleep
+double get_present_time (void);
 #endif

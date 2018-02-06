@@ -18,3 +18,11 @@ void my_sleep (unsigned msec) {
         break;
     }
 }
+
+/* get present time of day */
+double get_present_time (void) {
+    struct timeval presentTime;
+    gettimeofday( &presentTime, NULL );
+    double returnVal = (double) presentTime.tv_sec + presentTime.tv_usec * 1e-6;        // second
+    return returnVal;
+}
