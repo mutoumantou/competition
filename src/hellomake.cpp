@@ -1,6 +1,7 @@
 #include "general_header.hpp"
 #include "GUI_master.hpp"       // thread update GUI
 #include "actuation.hpp"        // actuation thread
+#include "keyboard.hpp"
 
 static void activate (GtkApplication *app, gpointer user_data) {
   GtkWidget *window;
@@ -21,6 +22,9 @@ static void activate (GtkApplication *app, gpointer user_data) {
   actuationButton = GTK_TOGGLE_BUTTON (gtk_builder_get_object (builder, "tB_actuation"));
   g_signal_connect (   visionButton, "toggled", G_CALLBACK (on_toggle_camera_stream_toggled), NULL);
   g_signal_connect (actuationButton, "toggled", G_CALLBACK (        on_tB_actuation_toggled), NULL);
+
+  /* link keyboard input */
+  g_signal_connect (window, "key-press-event", G_CALLBACK(key_event), NULL);
 
   gtk_builder_connect_signals (builder, NULL);
   g_object_unref (G_OBJECT (builder));

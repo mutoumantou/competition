@@ -10,10 +10,10 @@ LDIR = ../lib
 
 LIBS = -lm -ldc1394
 
-_DEPS = GUI_master.hpp general_header.hpp vision.hpp FWcamera.hpp actuation.hpp
+_DEPS = GUI_master.hpp general_header.hpp vision.hpp FWcamera.hpp actuation.hpp keyboard.hpp
 DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
 
-_OBJ = hellomake.o GUI_master.o vision.o FWcamera.o general_fun.o actuation.o
+_OBJ = hellomake.o GUI_master.o vision.o FWcamera.o general_fun.o actuation.o keyboard.o
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
 $(ODIR)/%.o: %.cpp $(DEPS)
