@@ -10,8 +10,8 @@
 //#include <stdint.h>
 //#include <inttypes.h>
 
-#define FOCULUS_TC 0x00097eff42802240
-#define FOCULUS_TB 0x00097eff42909500
+#define FOCULUS_TB 0x00097eff42802240
+#define FOCULUS_TC 0x00097eff42909500
 //#define FOCULUS 0x00097eff40300024
 
 ////#define PIXELINK 396320271505170
