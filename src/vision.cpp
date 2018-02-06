@@ -17,15 +17,7 @@ static void* video_stream_THREAD ( void *threadid ) {
         // Check VideoCapture documentation.
         if ( !cap.open(0) )
             return 0;
-    } else {
-        unsigned char *inImage;
-    }
-    
-    
-
-        //printf("frame size (%d, %d), depth %d channel %d elesize %d type %d\n", tempFrame.rows, tempFrame.cols, tempFrame.depth(), tempFrame.channels(), tempFrame.elemSize(), tempFrame.type());
-    while (fThread) {
-        if ( !fCamera ) {
+        while ( fThread ) {
             cap >> presentFrame;
             presentFrame.copyTo(tempFrame);
             //printf("frame size (%d, %d), depth %d channel %d elesize %d type %d\n", tempFrame.rows, tempFrame.cols, tempFrame.depth(), tempFrame.channels(), tempFrame.elemSize(), tempFrame.type());
@@ -53,7 +45,12 @@ static void* video_stream_THREAD ( void *threadid ) {
               //imshow("this is you, smile! :)", frame);
 
               //if( waitKey(10) == 27 ) break; // stop capturing by pressing ESC
-        } else {
+            my_sleep(30);
+        }
+    } else {
+        unsigned char *inImage;
+        while (fThread) {
+
             inImage = cam.grabAframe();
             if(inImage == NULL)	{
                 g_print("Error in firewire stream! Reattempting...\n");
@@ -68,9 +65,12 @@ static void* video_stream_THREAD ( void *threadid ) {
             copyLock = 1;
             img_m_color.copyTo(frameForDisplay);
             copyLock = 0;
+            my_sleep(30);           // correspond to 30 Hz camera rate
         }
-        my_sleep(30);           // correspond to 30 Hz camera rate
     }
+
+    //printf("frame size (%d, %d), depth %d channel %d elesize %d type %d\n", tempFrame.rows, tempFrame.cols, tempFrame.depth(), tempFrame.channels(), tempFrame.elemSize(), tempFrame.type());
+
     // the camera will be closed automatically upon exit
     // cap.close();
     printf("at the end of video_stream_THREAD.\n");

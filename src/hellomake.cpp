@@ -1,23 +1,26 @@
 #include "general_header.hpp"
 #include "GUI_master.hpp"       // thread update GUI
-//#include "callbacks.hpp"
+#include "actuation.hpp"        // actuation thread
 
 static void activate (GtkApplication *app, gpointer user_data) {
   GtkWidget *window;
   GtkImage *vidWindow;
   GtkLabel *timeLabel;
-  GtkToggleButton *visionButton;
+
 
   GtkBuilder *builder;
 
   builder = gtk_builder_new_from_file ("GUI.glade");
   window  = GTK_WIDGET (gtk_builder_get_object (builder, "mainWindow"));
   vidWindow = GTK_IMAGE  (gtk_builder_get_object (builder, "vidWindow")); // get video window handler
-
   timeLabel = GTK_LABEL (gtk_builder_get_object (builder, "timeLabel"));    // get time display label handler
-  visionButton = GTK_TOGGLE_BUTTON (gtk_builder_get_object (builder, "toggle_camera_stream"));
 
-  g_signal_connect (visionButton, "toggled", G_CALLBACK (on_toggle_camera_stream_toggled), NULL);
+  /* link GUI component to callback functions */
+  GtkToggleButton *visionButton, *actuationButton;
+  visionButton = GTK_TOGGLE_BUTTON (gtk_builder_get_object (builder, "toggle_camera_stream"));
+  actuationButton = GTK_TOGGLE_BUTTON (gtk_builder_get_object (builder, "tB_actuation"));
+  g_signal_connect (   visionButton, "toggled", G_CALLBACK (on_toggle_camera_stream_toggled), NULL);
+  g_signal_connect (actuationButton, "toggled", G_CALLBACK (        on_tB_actuation_toggled), NULL);
 
   gtk_builder_connect_signals (builder, NULL);
   g_object_unref (G_OBJECT (builder));
