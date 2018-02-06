@@ -24,7 +24,8 @@ static void activate (GtkApplication *app, gpointer user_data) {
   g_signal_connect (actuationButton, "toggled", G_CALLBACK (        on_tB_actuation_toggled), NULL);
 
   /* link keyboard input */
-  g_signal_connect (window, "key-press-event", G_CALLBACK(key_event), NULL);
+  g_signal_connect (window,   "key-press-event", G_CALLBACK(        key_event), NULL);
+  g_signal_connect (window, "key-release-event", G_CALLBACK(key_event_release), NULL);
 
   gtk_builder_connect_signals (builder, NULL);
   g_object_unref (G_OBJECT (builder));
