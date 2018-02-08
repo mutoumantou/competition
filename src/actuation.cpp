@@ -4,6 +4,7 @@ static int fThread = 0;             // flag of thread running
 static int directionCode = -1;      // -1: neutral; 0: +x; 1: +y; 2: -x; 3: -y
 static int fKey = 0;                // if a key has been pressed, request reviewing direction
 
+
 /* send signal to amplifiers */
 #define Coil_PX 0
 #define Coil_NX 3
@@ -12,6 +13,114 @@ static int fKey = 0;                // if a key has been pressed, request review
 #define Coil_PZ 2
 #define Coil_NZ 5
 
+/* class definition */
+/* constructor */
+Coil_System :: Coil_System ( void ) {
+    for (int i = 0; i < 6; i ++) {
+        gradientV[i] = 0;
+    }
+    for (int i = 0; i < 3; i ++) {
+        uniformV[i] = 0;
+    }
+    angle = 0;
+    angleOld = 0;
+    fGradient = 0;
+    output_signal ();
+}
+
+void Coil_System :: set_uniform_field_volt ( float data[3] ) {
+    for (int i = 0; i < 3; i ++) {
+        uniformV[i] = data[i];
+    }
+}
+
+void Coil_System :: set_gradient_field_volt ( float data[6] ) {
+    for (int i = 0; i < 6; i ++) {
+        gradientV[i] = data[i];
+    }
+}
+
+void Coil_System :: output_signal ( void ) {
+    if (fGradient) {
+        for (int i = 0; i < 6; i ++) {
+            outputV[i] = gradientV[i] + uniformV[i/2];
+        }
+    } else {
+        for (int i = 0; i < 6; i ++) {
+            outputV[i] =                uniformV[i/2];
+        }
+    }
+
+    s826_aoPin(Coil_PX, 2, outputV[0]);
+    s826_aoPin(Coil_NX, 2, outputV[1]);
+    s826_aoPin(Coil_PY, 2, outputV[2]);
+    s826_aoPin(Coil_NY, 2, outputV[3]);
+    s826_aoPin(Coil_PZ, 2, outputV[4]);
+    s826_aoPin(Coil_NZ, 2, outputV[5]);
+    fGradient = 0;
+}
+
+void Coil_System :: set_angle (float data) {
+    angleOld = angle;           // remember the last angle
+    angle = data;
+}
+
+void Coil_System :: rotate_to_new_angle ( void ) {
+    // angle is in range of [0, 360)
+    float del = angle - angleOld;
+    if (del > 180)
+        del = del - 360;
+    if (del < -180)
+        del = del + 360;
+
+    int step = 1;
+    if (del < 0)
+        step = -1;
+
+    /* gently rotate robot */
+    uniformV[2] = 0;
+    for (int i = 0; i < 6; i ++)
+        gradientV[i] = 0;
+    for (int i = 0; i < abs(del); i ++) {
+        angleOld = angleOld + step;
+        uniformV[0] = cosd(angleOld) * 2;
+        uniformV[1] = sind(angleOld) * 2;
+        uniformV[2] = 0.0;
+        output_signal ();
+        my_sleep(10);
+    }
+    angleOld = angle;
+    /* calc. gradient using new angle */
+    float gradientX = 1 * cosd(angle);
+    float gradientY = 1 * sind(angle);
+    for (int i = 0; i < 6; i ++) {
+        gradientV[i] = 0;
+    }
+    if (gradientX >= 0)
+        gradientV[0] = gradientX;
+    else
+        gradientV[1] = gradientX;
+    if (gradientY >= 0)
+        gradientV[2] = gradientY;
+    else
+        gradientV[3] = gradientY;
+}
+
+void Coil_System :: stop_output (void) {
+    for (int i = 0; i < 6; i ++) {
+        gradientV[i] = 0;
+    }
+    for (int i = 0; i < 3; i ++) {
+        uniformV[i] = 0;
+    }
+    angle = 0;
+    angleOld = 0;
+    output_signal ();
+}
+
+void Coil_System :: add_gradient_output (void) {
+    fGradient = 1;
+}
 
 static void send_signal_to_amplifier (float outputV[3]) {
     s826_aoPin(Coil_PX, 2, outputV[0]);
@@ -45,6 +154,7 @@ static void* actuation_THREAD ( void *threadid ) {
     printf("init result %d\n", initFlag);
 
     /* variable definition */
+    static Coil_System coil;
     float freq = 10;                // frequency of vibration
     float periodTime = 1.0 / freq;  // time per period
     float tiltAngle = 20;           // tilting angle of degrees
@@ -69,34 +179,34 @@ static void* actuation_THREAD ( void *threadid ) {
         /* calc. field in x-y directions */
         if (fKey) {
             if (directionCode == -1) {
-                outputV[0] = 0;
-                outputV[1] = 0;
-                outputV[2] = 0;
-
+                coil.stop_output ();
             } else {
-                outputV[2] = 0;
-                angle = directionCode * 90.0;
-                float newOutput[3] = {0,0,0};
-                newOutput[0] = ampXY * cosd(angle);
-                newOutput[1] = ampXY * sind(angle);
-                damp_rotation (outputV, newOutput);
-                printf("outputv %.3f %.3f %.3f\n", outputV[0], outputV[1], outputV[2]);
-                //for (int i = 0; i < 3; i ++)
-                //    outputV[i] = newOutput[i];
+                coil.set_angle (directionCode * 90.0);
+                coil.rotate_to_new_angle ();
             }
             fKey = 0;                   // reset key flag
         }
 
         /* decide z field amplitude based on time */
-        if (directionCode != -1)
+        if (directionCode != -1) {
             outputV[2] = -1.0 * ampZ * timeElapsed / periodTime;         // make the object tail tilt up
+            coil.set_uniform_field_volt (outputV);
+        }
 
-        send_signal_to_amplifier (outputV);
+
+        /* apply gradient when robot slips */
+        if (timeElapsed >= 0.8 * periodTime) {
+            // output gradient along moving direction
+            coil.add_gradient_output();
+        }
+        coil.output_signal ();
+        //send_signal_to_amplifier (outputV);
         my_sleep(10);
     }
 
-    outputV[0] = 0;outputV[1] = 0;outputV[2] = 0;
-    send_signal_to_amplifier (outputV);
+    //outputV[0] = 0;outputV[1] = 0;outputV[2] = 0;
+    //send_signal_to_amplifier (outputV);
+    coil.stop_output();
     s826_close();
     printf("at the end of actuation_THREAD.\n");
 }
