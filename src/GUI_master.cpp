@@ -6,6 +6,12 @@ static GtkImage *GUIImage;          // pointer to video window
 static GtkLabel *GUILabel;          // pointer to time display label
 static Mat presentFrame;            // present frame to display
 
+/* restore the default image after deactivating camera */
+static gboolean restore_vid_window ( gpointer userdata ) {
+    gtk_image_set_from_file ( GUIImage, "default.jpg" );
+    return G_SOURCE_REMOVE;
+}
+
 static gboolean update_vid_window (gpointer userdata) {
     get_present_image ( & presentFrame );
     //if (presentFrame.data == NULL)
@@ -47,11 +53,17 @@ static gboolean update_GUI_time (gpointer userdata) {
 static void* GUI_update_THREAD ( void *threadid ) {
     //g_print ("Hello World\n")
     printf("at the start of GUI_update_THREAD.\n");
+    int fCameraOnDisplay = 0;
     while (fThread) {
         g_main_context_invoke (NULL, update_GUI_time  , NULL);
-        if (fCam) {
+        if (fCam) {                         // if camera is active
+            fCameraOnDisplay = 1;
             g_main_context_invoke (NULL, update_vid_window, NULL);
+        } else if (fCameraOnDisplay) {      // if camera is not active but was active 1 iteration before
+            fCameraOnDisplay = 0;
+            g_main_context_invoke (NULL, restore_vid_window, NULL);
         }
+
         my_sleep (30);			// correspond to 30 Hz camera refresh rate
     }
     printf("at the end of GUI_update_THREAD.\n");
