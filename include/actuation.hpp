@@ -13,6 +13,7 @@ class Coil_System {
     public:
         Coil_System ( void );
         void set_uniform_field_volt ( float data[3] );
+        void set_z_field_volt (float data);
         void set_gradient_field_volt ( float data[6] );
         void output_signal ( void );
         void set_angle (float data);

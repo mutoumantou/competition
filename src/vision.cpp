@@ -5,13 +5,13 @@ static FWcamera cam; // create a new instance of FWcamera
 static Mat presentFrame = Mat(480,640,CV_8UC3);            // present captured frame
 static Mat frameForDisplay = Mat(480,640,CV_8UC3);         // different with presentFrame by annotation/drawing
 static int copyLock = 0;
-static int fCamera = 1;                                 // 0: workstation, using FWcamera; 1: laptop, use webcamera
+static int fCamera = 0;                                 // 0: workstation, using FWcamera; 1: laptop, use webcamera
 
 static void* video_stream_THREAD ( void *threadid ) {
     printf("at the start of video_stream_THREAD.\n");
     /* use laptop webcamera instead of FWcamera */
     if ( fCamera ) {
-
+        /*
         VideoCapture cap;               // may cause crash problem of GTK2.0 conflick with GTK3.0 on workstation computer
         Mat tempFrame = Mat(480,640,CV_8UC3);
         // open the default camera, use something different from 0 otherwise;
@@ -47,7 +47,7 @@ static void* video_stream_THREAD ( void *threadid ) {
 
               //if( waitKey(10) == 27 ) break; // stop capturing by pressing ESC
             my_sleep(30);
-        }
+        }*/
     } else {
         unsigned char *inImage;
 
@@ -76,6 +76,10 @@ static void* video_stream_THREAD ( void *threadid ) {
 
     // the camera will be closed automatically upon exit
     // cap.close();
+    cam.stopGrabbingVideo();
+	my_sleep(100);
+	cam.deinitialize();
+    cam.deinitialize();
     printf("at the end of video_stream_THREAD.\n");
 }
 
