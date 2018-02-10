@@ -63,12 +63,13 @@ void Coil_System :: output_signal ( void ) {
         }
     }
 
-    s826_aoPin(Coil_PX, 2, outputV[0] * 0.85);
+    s826_aoPin(Coil_PX, 2, outputV[0]);
     s826_aoPin(Coil_NX, 2, outputV[1]);
-    s826_aoPin(Coil_PY, 2, outputV[2] * 0.95);
+    s826_aoPin(Coil_PY, 2, outputV[2]);
     s826_aoPin(Coil_NY, 2, outputV[3]);
     s826_aoPin(Coil_PZ, 2, outputV[4]);
     s826_aoPin(Coil_NZ, 2, outputV[5]);
+    //printf("output %.3f %.3f %.3f %.3f %.3f %.3f.\n", outputV[0], outputV[1], outputV[2],outputV[3], outputV[4], outputV[5]);
     fGradient = 0;
 }
 
@@ -95,8 +96,8 @@ void Coil_System :: rotate_to_new_angle ( void ) {
         gradientV[i] = 0;
     for (int i = 0; i < abs(del); i ++) {
         angleOld = angleOld + step;
-        uniformV[0] = cosd(angleOld) * 2;
-        uniformV[1] = sind(angleOld) * 2;
+        uniformV[0] = cosd(angleOld) * 1;
+        uniformV[1] = sind(angleOld) * 1;
         uniformV[2] = 0.0;
         output_signal ();
         my_sleep(10);
@@ -169,8 +170,8 @@ static void* actuation_THREAD ( void *threadid ) {
     static Coil_System coil;
     float freq = 10;                // frequency of vibration
     float periodTime = 1.0 / freq;  // time per period
-    float tiltAngle = 15;           // tilting angle of degrees
-    float ampXY = 2;                // field amplitude in voltage
+    float tiltAngle = 45;           // tilting angle of degrees
+    float ampXY = 1;                // field amplitude in voltage
     float ampZ  = ampXY * tand(tiltAngle);
     float outputV[3] = {0,0,0};     // output voltage for x, y, z
     float angle = 0;                // moving angle in x-y plane
@@ -201,9 +202,8 @@ static void* actuation_THREAD ( void *threadid ) {
 
         /* decide z field amplitude based on time */
         if (directionCode != -1) {
-            outputV[2] = 1.0 * ampZ * timeElapsed / (0.8 * periodTime);         // make the object tail tilt up
-            if (outputV[2] > ampZ)
-                outputV[2] = 0;
+            outputV[2] = -1.0 * ampZ * timeElapsed / periodTime;         // make the object tail tilt up
+
             coil.set_z_field_volt (outputV[2]);
         }
 
