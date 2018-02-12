@@ -17,10 +17,8 @@ static void activate (GtkApplication *app, gpointer user_data) {
   timeLabel = GTK_LABEL (gtk_builder_get_object (builder, "timeLabel"));    // get time display label handler
 
   /* link GUI component to callback functions */
-  GtkToggleButton *visionButton, *actuationButton;
-  visionButton = GTK_TOGGLE_BUTTON (gtk_builder_get_object (builder, "toggle_camera_stream"));
+  GtkToggleButton *actuationButton;
   actuationButton = GTK_TOGGLE_BUTTON (gtk_builder_get_object (builder, "tB_actuation"));
-  g_signal_connect (   visionButton, "toggled", G_CALLBACK (on_toggle_camera_stream_toggled), NULL);
   g_signal_connect (actuationButton, "toggled", G_CALLBACK (        on_tB_actuation_toggled), NULL);
 
   /* link keyboard input */
@@ -33,9 +31,7 @@ static void activate (GtkApplication *app, gpointer user_data) {
   //window = gtk_application_window_new (app);
   //gtk_window_set_title(GTK_WINDOW(window), "Magnet Controller");
   gtk_application_add_window (app, GTK_WINDOW (window));
-
   gtk_widget_show (window);
-
   GUI_master_activate (vidWindow, timeLabel);
   //gtk_main();
 }
