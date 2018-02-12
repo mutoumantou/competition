@@ -202,7 +202,7 @@ static void* actuation_THREAD ( void *threadid ) {
 
         /* decide z field amplitude based on time */
         if (directionCode != -1) {
-            outputV[2] = -1.0 * ampZ * timeElapsed / periodTime;         // make the object tail tilt up
+            outputV[2] = 1.0 * ampZ * timeElapsed / periodTime;         // make the object tail tilt up
 
             coil.set_z_field_volt (outputV[2]);
         }
