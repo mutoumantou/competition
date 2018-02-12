@@ -53,7 +53,7 @@
             </child>
             <child>
               <object class="GtkToggleButton" id="toggle_arena">
-                <property name="label" translatable="yes">togglebutton</property>
+                <property name="label" translatable="yes">digital arena</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
