@@ -1,9 +1,14 @@
 #include "actuation.hpp"
 
 static int fThread = 0;             // flag of thread running
+static int fGradient = 0;           // 0: use uniform field; 1: use gradient field
 static int directionCode = -1;      // -1: neutral; 0: +x; 1: +y; 2: -x; 3: -y
 static int fKey = 0;                // if a key has been pressed, request reviewing direction
-
+static float freq = 10.0;               // actuation frequency
+static float periodTime = 1.0 / freq;   // time taken per period
+static float ampXY = 1.0;             //field amplitude in XY plane in voltage
+static float tiltAngle = 45.0;      // tilting angle
+static float ampZ  = ampXY * tand(tiltAngle);
 
 /* send signal to amplifiers */
 #define Coil_PX 0
@@ -27,9 +32,9 @@ Coil_System :: Coil_System ( void ) {
     fGradient = 0;
     /* ensure robot is init. aligned with +x */
     for (int i = 0; i < 10; i ++) {
-        uniformV[0] = i * 0.1;
+        uniformV[0] = ampXY * i * 0.1;
         output_signal ();
-        my_sleep(100);
+        my_sleep(50);
     }
     //uniformV[0] = 0;
     //output_signal ();
@@ -63,12 +68,39 @@ void Coil_System :: output_signal ( void ) {
         }
     }
 
-    s826_aoPin(Coil_PX, 2, outputV[0]);
-    s826_aoPin(Coil_NX, 2, outputV[1]);
-    s826_aoPin(Coil_PY, 2, outputV[2]);
-    s826_aoPin(Coil_NY, 2, outputV[3]);
-    s826_aoPin(Coil_PZ, 2, outputV[4]);
-    s826_aoPin(Coil_NZ, 2, outputV[5]);
+    if (!fGradient) {
+        s826_aoPin(Coil_PX, 2, outputV[0]);
+        s826_aoPin(Coil_NX, 2, outputV[1]);
+        s826_aoPin(Coil_PY, 2, outputV[2]);
+        s826_aoPin(Coil_NY, 2, outputV[3]);
+        s826_aoPin(Coil_PZ, 2, outputV[4]);
+        s826_aoPin(Coil_NZ, 2, outputV[5]);
+    } else {
+        if (outputV[0] >= 0) {
+            s826_aoPin(Coil_PX, 2, outputV[0]);
+            s826_aoPin(Coil_NX, 2, 0);
+        } else {
+            s826_aoPin(Coil_PX, 2, 0);
+            s826_aoPin(Coil_NX, 2, outputV[0]);
+        }
+
+        if (outputV[2] >= 0) {
+            s826_aoPin(Coil_PY, 2, outputV[2]);
+            s826_aoPin(Coil_NY, 2, 0);
+        } else {
+            s826_aoPin(Coil_PY, 2, 0);
+            s826_aoPin(Coil_NY, 2, outputV[2]);
+        }
+
+        if (outputV[4] >= 0) {
+            s826_aoPin(Coil_PZ, 2, outputV[4]);
+            s826_aoPin(Coil_NZ, 2, 0);
+        } else {
+            s826_aoPin(Coil_PZ, 2, 0);
+            s826_aoPin(Coil_NZ, 2, outputV[4]);
+        }
+    }
+
     //printf("output %.3f %.3f %.3f %.3f %.3f %.3f.\n", outputV[0], outputV[1], outputV[2],outputV[3], outputV[4], outputV[5]);
     fGradient = 0;
 }
@@ -96,8 +128,8 @@ void Coil_System :: rotate_to_new_angle ( void ) {
         gradientV[i] = 0;
     for (int i = 0; i < abs(del); i ++) {
         angleOld = angleOld + step;
-        uniformV[0] = cosd(angleOld) * 1;
-        uniformV[1] = sind(angleOld) * 1;
+        uniformV[0] = cosd(angleOld) * ampXY;
+        uniformV[1] = sind(angleOld) * ampXY;
         uniformV[2] = 0.0;
         output_signal ();
         my_sleep(10);
@@ -167,12 +199,8 @@ static void* actuation_THREAD ( void *threadid ) {
     printf("init result %d\n", initFlag);
 
     /* variable definition */
-    static Coil_System coil;
-    float freq = 10;                // frequency of vibration
-    float periodTime = 1.0 / freq;  // time per period
-    float tiltAngle = 45;           // tilting angle of degrees
-    float ampXY = 1;                // field amplitude in voltage
-    float ampZ  = ampXY * tand(tiltAngle);
+    Coil_System coil;               // get an instance of coil system (class)
+
     float outputV[3] = {0,0,0};     // output voltage for x, y, z
     float angle = 0;                // moving angle in x-y plane
 
@@ -248,4 +276,26 @@ void set_directionCode (int keycode) {
         case  3: printf("down\n"); break;
     }
     fKey = 1;                   // a key is pressed
+}
+
+/* change actuation frequency in Hz */
+void on_spin_freq_changed (GtkEditable *editable, gpointer user_data) {
+    freq = gtk_spin_button_get_value ( GTK_SPIN_BUTTON(editable) );
+    periodTime = 1.0 / freq;            // update period time
+}
+
+/* change actuation amplitude in mT */
+void on_spin_amp_changed  (GtkEditable *editable, gpointer user_data) {
+    float d = gtk_spin_button_get_value ( GTK_SPIN_BUTTON(editable) );
+    ampXY = d / 5.0;              // convert mT to voltage
+    ampZ  = ampXY * tand(tiltAngle);
+}
+
+/* change tilting angle in degrees */
+void on_spin_tiltingAngle_changed (GtkEditable *editable, gpointer user_data) {
+    tiltAngle = gtk_spin_button_get_value ( GTK_SPIN_BUTTON(editable) );
+}
+
+void on_toggle_gradient_toggled (GtkToggleButton *togglebutton, gpointer data) {
+    fGradient = gtk_toggle_button_get_active (togglebutton);
 }

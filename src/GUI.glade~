@@ -2,6 +2,22 @@
 <!-- Generated with glade 3.18.3 -->
 <interface>
   <requires lib="gtk+" version="3.12"/>
+  <object class="GtkAdjustment" id="ad_amp">
+    <property name="upper">15</property>
+    <property name="step_increment">0.10000000000000001</property>
+    <property name="page_increment">1</property>
+  </object>
+  <object class="GtkAdjustment" id="ad_freq">
+    <property name="upper">100</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="ad_tiltingAngle">
+    <property name="upper">90</property>
+    <property name="value">45</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
   <object class="GtkApplicationWindow" id="mainWindow">
     <property name="can_focus">False</property>
     <child>
@@ -53,7 +69,7 @@
             </child>
             <child>
               <object class="GtkToggleButton" id="toggle_arena">
-                <property name="label" translatable="yes">togglebutton</property>
+                <property name="label" translatable="yes">digital arena</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
@@ -92,7 +108,8 @@
             <property name="can_focus">False</property>
             <child>
               <object class="GtkToggleButton" id="tB_actuation">
-                <property name="label" translatable="yes">start/stop actuation thread</property>
+                <property name="label" translatable="yes">start/stop
+actuation thread</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
@@ -104,10 +121,101 @@
               </packing>
             </child>
             <child>
-              <placeholder/>
-            </child>
-            <child>
-              <placeholder/>
+              <object class="GtkGrid" id="grid1">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <child>
+                  <object class="GtkLabel" id="label1">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="label" translatable="yes">freq (Hz)</property>
+                    <property name="justify">center</property>
+                    <property name="width_chars">19</property>
+                  </object>
+                  <packing>
+                    <property name="left_attach">0</property>
+                    <property name="top_attach">0</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkSpinButton" id="spin_freq">
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="text" translatable="yes">0.0</property>
+                    <property name="adjustment">ad_freq</property>
+                    <property name="digits">1</property>
+                    <signal name="changed" handler="on_spin_freq_changed" swapped="no"/>
+                  </object>
+                  <packing>
+                    <property name="left_attach">1</property>
+                    <property name="top_attach">0</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkLabel" id="label2">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="label" translatable="yes">amp (mT)</property>
+                    <property name="justify">center</property>
+                    <property name="width_chars">18</property>
+                  </object>
+                  <packing>
+                    <property name="left_attach">2</property>
+                    <property name="top_attach">0</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkSpinButton" id="spin_amp">
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="text" translatable="yes">0.0</property>
+                    <property name="adjustment">ad_amp</property>
+                    <property name="digits">1</property>
+                    <signal name="changed" handler="on_spin_amp_changed" swapped="no"/>
+                  </object>
+                  <packing>
+                    <property name="left_attach">3</property>
+                    <property name="top_attach">0</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkLabel" id="label3">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="label" translatable="yes">tilting angle (deg)</property>
+                    <property name="justify">center</property>
+                    <property name="width_chars">19</property>
+                  </object>
+                  <packing>
+                    <property name="left_attach">0</property>
+                    <property name="top_attach">1</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkSpinButton" id="spin_tiltingAngle">
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="adjustment">ad_tiltingAngle</property>
+                    <property name="digits">1</property>
+                    <signal name="changed" handler="on_spin_tiltingAngle_changed" swapped="no"/>
+                  </object>
+                  <packing>
+                    <property name="left_attach">1</property>
+                    <property name="top_attach">1</property>
+                  </packing>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">1</property>
+              </packing>
             </child>
           </object>
           <packing>
