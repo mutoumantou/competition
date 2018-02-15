@@ -2,7 +2,7 @@
 
 static int fThread = 0;             // flag of thread running
 static int fGradient = 0;           // 0: use uniform field; 1: use gradient field
-static int directionCode = -1;      // -1: neutral; 0: +x; 1: +y; 2: -x; 3: -y
+static int directionCode = 0;      // -1: neutral; 0: +x; 1: +y; 2: -x; 3: -y
 static int fKey = 0;                // if a key has been pressed, request reviewing direction
 static float freq = 10.0;               // actuation frequency
 static float periodTime = 1.0 / freq;   // time taken per period
@@ -69,13 +69,23 @@ void Coil_System :: output_signal ( void ) {
     }
 
     if (!fGradient) {
+        s826_aoPin(Coil_PZ, 2, outputV[4]);     // output z first so that when clearing field the robot will not stand up
+        s826_aoPin(Coil_NZ, 2, outputV[5]);
+
         s826_aoPin(Coil_PX, 2, outputV[0]);
         s826_aoPin(Coil_NX, 2, outputV[1]);
         s826_aoPin(Coil_PY, 2, outputV[2]);
         s826_aoPin(Coil_NY, 2, outputV[3]);
-        s826_aoPin(Coil_PZ, 2, outputV[4]);
-        s826_aoPin(Coil_NZ, 2, outputV[5]);
+
     } else {
+        if (outputV[4] >= 0) {
+            s826_aoPin(Coil_PZ, 2, outputV[4]);
+            s826_aoPin(Coil_NZ, 2, 0);
+        } else {
+            s826_aoPin(Coil_PZ, 2, 0);
+            s826_aoPin(Coil_NZ, 2, outputV[4]);
+        }
+
         if (outputV[0] >= 0) {
             s826_aoPin(Coil_PX, 2, outputV[0]);
             s826_aoPin(Coil_NX, 2, 0);
@@ -90,14 +100,6 @@ void Coil_System :: output_signal ( void ) {
         } else {
             s826_aoPin(Coil_PY, 2, 0);
             s826_aoPin(Coil_NY, 2, outputV[2]);
-        }
-
-        if (outputV[4] >= 0) {
-            s826_aoPin(Coil_PZ, 2, outputV[4]);
-            s826_aoPin(Coil_NZ, 2, 0);
-        } else {
-            s826_aoPin(Coil_PZ, 2, 0);
-            s826_aoPin(Coil_NZ, 2, outputV[4]);
         }
     }
 
@@ -206,7 +208,71 @@ static void* actuation_THREAD ( void *threadid ) {
 
     double startTime = 0, presentTime = 0, timeElapsed = 0;
     startTime = get_present_time ();
+
+    cv :: Point robotPos, cargoPos;     // current position info. of robot and cargo
+    cv :: Point preRobotPos, preCargoPos;   // previous position info. of robot and cargo
+    float movingAngle = 0.0;            // desired moving angle of robot in degrees
+
+    return_center_pt_info ( &preRobotPos, &preCargoPos );
+
+    float dis = 0.0;                    // distance between robot and cargo
+    int fContact = 0;                   // whether or not robot has contacted cargo
+
+    float dis2 = 0.0;                   // distance from robot to destination
+    double contactTime = 0;
+
     while (fThread) {
+        /* get current position info. of robot and cargo */
+        return_center_pt_info ( &robotPos, &cargoPos );
+        //printf("robot (%d, %d), cargo (%d, %d)\n", robotPos.x, robotPos.y, cargoPos.x, cargoPos.y);
+        if ( abs(cargoPos.x - preCargoPos.x) < 20 && abs(cargoPos.y - preCargoPos.y) < 20 ) {
+            preCargoPos.x = cargoPos.x;
+            preCargoPos.y = cargoPos.y;
+        } else {
+            if ( dis > 0 && dis < 30 ) {
+                fContact = 1;
+                dis = -1;
+                contactTime = get_present_time ();
+                printf("robot has touched cargo.\n");
+            }
+
+            cargoPos.x = preCargoPos.x;
+            cargoPos.y = preCargoPos.y;
+        }
+
+
+        if (!fContact) {
+            dis = sqrt ( pow ( cargoPos.x - robotPos.x, 2 ) + pow ( cargoPos.y - robotPos.y, 2 ) );
+            /* calc. moving direction */
+
+            movingAngle = atan2(cargoPos.y - robotPos.y, cargoPos.x - robotPos.x) * 180.0 / M_PI;
+            coil.set_angle ( movingAngle );
+            //printf("1: moving angle %.3f\n", movingAngle);
+            coil.rotate_to_new_angle ();
+        } else {
+            double tempTime = presentTime - contactTime;
+            /*
+            if (tempTime < 10)
+                tempTime = 0;
+            else
+                tempTime = tempTime - 10;
+            movingAngle = movingAngle - 0.2 * tempTime;
+            coil.set_angle ( movingAngle );
+            printf("2: moving angle %.3f\n", movingAngle);
+            coil.rotate_to_new_angle ();
+            */
+
+            if (tempTime > 6) {
+                movingAngle = atan2(240 - robotPos.y, 250 - robotPos.x) * 180.0 / M_PI;
+                coil.set_angle ( movingAngle );
+                coil.rotate_to_new_angle ();
+                dis2 = sqrt ( pow ( 250 - robotPos.x, 2 ) + pow ( 240 - robotPos.y, 2 ) );
+                if (dis2 < 15)
+                    fThread = 0;
+            }
+        }
+
+
         presentTime = get_present_time ();
         timeElapsed = presentTime - startTime;
         if (timeElapsed >= periodTime) {
@@ -230,8 +296,7 @@ static void* actuation_THREAD ( void *threadid ) {
 
         /* decide z field amplitude based on time */
         if (directionCode != -1) {
-            outputV[2] = 1.0 * ampZ * timeElapsed / periodTime;         // make the object tail tilt up
-
+            outputV[2] = -1.0 * ampZ * timeElapsed / periodTime;         // make the object tail tilt up
             coil.set_z_field_volt (outputV[2]);
         }
 
@@ -246,8 +311,6 @@ static void* actuation_THREAD ( void *threadid ) {
         my_sleep(10);
     }
 
-    //outputV[0] = 0;outputV[1] = 0;outputV[2] = 0;
-    //send_signal_to_amplifier (outputV);
     coil.stop_output();
     s826_close();
     printf("at the end of actuation_THREAD.\n");

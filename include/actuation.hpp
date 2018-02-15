@@ -3,6 +3,8 @@
 
 #include "general_header.hpp"
 #include "s826.hpp"
+#include "vision.hpp"
+
 
 extern "C" {
     void on_spin_freq_changed (GtkEditable *editable, gpointer user_data);

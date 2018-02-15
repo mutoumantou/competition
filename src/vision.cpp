@@ -5,8 +5,13 @@ static FWcamera cam; // create a new instance of FWcamera
 static Mat presentFrame = Mat(480,640,CV_8UC3);            // present captured frame
 static Mat frameForDisplay = Mat(480,640,CV_8UC3);         // different with presentFrame by annotation/drawing
 static int copyLock = 0;
-static int fCamera = 1;                                 // 0: workstation, using FWcamera; 1: laptop, use webcamera
+static int fCamera = 0;                                 // 0: workstation, using FWcamera; 1: laptop, use webcamera
 static int fArena  = 0;                                 // 0: hide; 1: show digital arena
+
+static int thresholdPara = 65;
+
+static Point robotPos, cargoPos;
+static int fRobotPos=0, fCargoPos=0;                    // data lock
 
 /* draw digital arena on image */
 static void draw_digital_arena ( Mat * data ) {
@@ -22,6 +27,7 @@ static void* video_stream_THREAD ( void *threadid ) {
     printf("at the start of video_stream_THREAD.\n");
     /* use laptop webcamera instead of FWcamera */
     if ( fCamera ) {
+        /*
         VideoCapture cap;               // may cause crash problem of GTK2.0 conflick with GTK3.0 on workstation computer
         Mat tempFrame = Mat(480,640,CV_8UC3);
         // open the default camera, use something different from 0 otherwise;
@@ -43,8 +49,10 @@ static void* video_stream_THREAD ( void *threadid ) {
             }
             //printf("take a look hex %#x\n", tempFrame.at<unsigned int>(0,0));
             //my_sleep(10000);
+            */
 
             /* draw digital arena if needed */
+            /*
             if ( fArena )
                 draw_digital_arena ( &tempFrame );
 
@@ -61,7 +69,8 @@ static void* video_stream_THREAD ( void *threadid ) {
 
               //if( waitKey(10) == 27 ) break; // stop capturing by pressing ESC
             my_sleep(30);
-        }
+
+        } */
     } else {
         unsigned char *inImage;
 
@@ -74,9 +83,78 @@ static void* video_stream_THREAD ( void *threadid ) {
                 my_sleep(1); 																										// I don't know what the wait delay should be
             }
             Mat img_m = Mat(480, 640, CV_8UC1, inImage);
-            Mat img_m_color;
+            Mat img_m_color, binaryImg;
 
-            cvtColor(img_m, img_m_color, CV_GRAY2BGR);
+
+            //cvtColor(img_m, img_m_color, CV_GRAY2BGR);
+
+            /* object detection */
+            vector<vector<Point> > contours;
+            vector<Vec4i> hierarchy;
+
+            //dilate( img_m, img_m, Mat(), Point(-1, -1), 10, 1, 1);
+		    //erode( img_m, img_m, Mat(), Point(-1, -1), 15, 1, 1);
+
+            //blur      ( img_m, binaryImg, Size(4,4) );       // blur image to remove small blips etc
+	        threshold    ( img_m, binaryImg, thresholdPara, 255, THRESH_BINARY_INV );
+            cvtColor ( binaryImg, img_m_color, CV_GRAY2BGR );
+            findContours ( binaryImg, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) ); //find contours
+
+            if (contours.size() < 2)
+                printf("contours size is %d.\n", (int)contours.size());
+            else {
+        		//first, find the largest contour    ...   Contour classification!
+        		int largestArea = -1;
+                int secondArea = -1;
+
+                int iLargestContour = -1;               // index of largest contour
+                int i2ndContour = -1;
+
+        		for(int i = 0; i < contours.size(); i++ ) {
+        			int a = contourArea(contours[i], false);           //  Find the area of contour
+        			if ( a > largestArea ) {                           // if current contour is bigger ...
+                        secondArea = largestArea;
+                        i2ndContour = iLargestContour;
+        				largestArea = a;
+        				iLargestContour = i;                 //Store the index of largest contour
+        			} else if ( a > secondArea ) {
+                        secondArea = a;
+                        i2ndContour = i;
+                    }
+        		}
+
+                RotatedRect rotatedBoundingRect1, rotatedBoundingRect2;
+                rotatedBoundingRect1 = minAreaRect( Mat( contours [iLargestContour] ) );
+                rotatedBoundingRect2 = minAreaRect( Mat( contours [i2ndContour] ) );
+
+                /* get center point position of robot */
+                while (fRobotPos);
+                fRobotPos = 1;
+                robotPos.x = rotatedBoundingRect1.center.x;
+                robotPos.y = rotatedBoundingRect1.center.y;
+                fRobotPos = 0;
+
+                /* get center point position of cargo */
+                while (fCargoPos);
+                fCargoPos = 1;
+                cargoPos.x = rotatedBoundingRect2.center.x;
+                cargoPos.y = rotatedBoundingRect2.center.y;
+                fCargoPos = 0;
+
+                float angle;
+                angle = rotatedBoundingRect1.angle;
+
+                Point2f rect_points1[4], rect_points2[4];
+                rotatedBoundingRect1.points( rect_points1 );
+                rotatedBoundingRect2.points( rect_points2 );
+
+                /* draw detected rect. */
+                for (int j = 0; j < 4; j ++) {
+                    line( img_m_color, rect_points1[j], rect_points1[(j+1)%4], Scalar(255,0,0), 1, 8 );
+                    line( img_m_color, rect_points2[j], rect_points2[(j+1)%4], Scalar(255,0,0), 1, 8 );
+                }
+
+        	}
 
             /* draw digital arena if needed */
             if ( fArena )
@@ -84,6 +162,7 @@ static void* video_stream_THREAD ( void *threadid ) {
 
             while (copyLock);
             copyLock = 1;
+
             img_m_color.copyTo(frameForDisplay);
             copyLock = 0;
             my_sleep(30);           // correspond to 30 Hz camera rate
@@ -137,4 +216,23 @@ void get_present_image ( Mat * container ) {
 /* show/hide digital arena */
 void on_toggle_arena_toggled (GtkToggleButton *togglebutton, gpointer data) {
     fArena = gtk_toggle_button_get_active (togglebutton);
+}
+
+void on_spin_binaryThreshold_changed (GtkEditable *editable, gpointer user_data) {
+    thresholdPara = gtk_spin_button_get_value ( GTK_SPIN_BUTTON(editable) );
+}
+
+/* return current position information of robot and cargo to controller */
+void return_center_pt_info ( Point *robot, Point *cargo ) {
+    while (fRobotPos);
+    fRobotPos = 1;
+    (*robot).x = robotPos.x;
+    (*robot).y = 480 - robotPos.y;
+    fRobotPos = 0;
+
+    while (fCargoPos);
+    fCargoPos = 1;
+    (*cargo).x = cargoPos.x;
+    (*cargo).y = 480 - cargoPos.y;
+    fCargoPos = 0;
 }
