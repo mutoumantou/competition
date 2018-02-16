@@ -136,7 +136,7 @@ void Coil_System :: add_gradient_output (void) {
 class MMC_Controller {
   public:
     MMC_Controller (void);      // constructor
-    int get_latest_pos (int switch);  // get latest position info from vision.cpp
+    int get_latest_pos (int data);  // get latest position info from vision.cpp
     int check_contact (void);         // check if robot has touched cargo
     float dis, angle;                 // distance from robot to cargo, desired moving angle
     cv :: Point robot, cargo;         // center point position of robot and cargo
@@ -164,8 +164,8 @@ output: 1: valid new position; 0: cargo pos not valid
 intput: 0: 1st run, use for preCargo and preRobot; 1: following runs
 robot pos. is considered to be always valid
 */
-int MMC_Controller :: get_latest_pos (int switch) {
-  if (switch) {
+int MMC_Controller :: get_latest_pos (int data) {
+  if (data) {
     return_center_pt_info ( &robot, &cargo );
     preRobot.x = robot.x;
     preRobot.y = robot.y;
