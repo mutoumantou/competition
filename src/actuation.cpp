@@ -224,16 +224,16 @@ static void* actuation_THREAD ( void *threadid ) {
       //printf("robot (%d, %d), cargo (%d, %d)\n", robotPos.x, robotPos.y, cargoPos.x, cargoPos.y);
 
       if ( ! ctr.fContact ) {         // if contact has not happended ...
-        if ( ! rst ) {                  // if cargo detection is not valid ...
-          rst = ctr.check_contact ();     // check if contact happened
-          if (rst) {                      // if robot has contacted cargo ...
-            contactPos[0] = ctr.robot.x;  // record the robot position when contact happens
-            contactPos[1] = ctr.robot.y;
-            printf("robot has touched cargo.\n");
-          }                               // otherwise just igore this detection
-        } else {                        // if cargo detection is valid ...
-          coil.set_angle ( ctr.angle );   // set moving angle to coil
-          coil.rotate_to_new_angle ();
+        if ( rst ) {                  // if cargo detection is valid ...
+            coil.set_angle ( ctr.angle );   // set moving angle to coil
+            coil.rotate_to_new_angle ();
+        } else {                        // if cargo detection is not valid ...
+            rst = ctr.check_contact ();     // check if contact happened
+            if (rst) {                      // if robot has contacted cargo ...
+              contactPos[0] = ctr.robot.x;  // record the robot position when contact happens
+              contactPos[1] = ctr.robot.y;
+              printf("robot has touched cargo.\n");
+            }                               // otherwise just igore this detection
         }
       } else {                      // if contact has happened
         if ( fCargoMove ) {             // if robot has moved cargo
