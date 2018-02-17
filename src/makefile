@@ -8,12 +8,12 @@ GTKLIBS  = `pkg-config --libs gtk+-3.0` `pkg-config --cflags --libs opencv --lib
 ODIR = obj
 LDIR = ../lib
 
-LIBS = -lm -ldc1394 -l826_64
+LIBS = -lm -ldc1394 #-l826_64
 
 _DEPS = GUI_master.hpp general_header.hpp vision.hpp FWcamera.hpp actuation.hpp keyboard.hpp s826.hpp s826api.h
 DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
 
-_OBJ = hellomake.o GUI_master.o vision.o FWcamera.o general_fun.o actuation.o keyboard.o s826.o
+_OBJ = hellomake.o GUI_master.o vision.o FWcamera.o general_fun.o actuation.o keyboard.o s826_dummy.o
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
 $(ODIR)/%.o: %.cpp $(DEPS)

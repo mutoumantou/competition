@@ -139,8 +139,12 @@ class MMC_Controller {
     int get_latest_pos (int data);  // get latest position info from vision.cpp
     int check_contact (void);         // check if robot has touched cargo
     float dis, angle;                 // distance from robot to cargo, desired moving angle
-    cv :: Point robot, cargo;         // center point position of robot and cargo
+    cv :: Point robot, cargo, goal;         // center point position of robot and cargo
+    float cargoAngle;                   // orientation of cargo
     int fContact;
+    int state;                          // 0: move to cargo; 1: rotate; 2: grab cargo; 3: move to destination
+    void update_goal_info_using_cargo_pos (void);
+    void set_cargo_as_goal (void);
   private:
     cv :: Point preRobot, preCargo;   // previous center point information of robot and cargo
 
@@ -151,12 +155,15 @@ MMC_Controller :: MMC_Controller () {
   robot.y = 0;
   cargo.x = 0;
   cargo.y = 0;
+  goal.x = 0; goal.y = 0;
+  cargoAngle = 0;
   preRobot.x = 0;
   preRobot.y = 0;
   preCargo.x = 0;
   preCargo.y = 0;
   dis = 0.0; angle = 0.0;
   fContact = 0;
+  state = 0;
 }
 
 /*
@@ -166,14 +173,12 @@ robot pos. is considered to be always valid
 */
 int MMC_Controller :: get_latest_pos (int data) {
   if (data) {
-    return_center_pt_info ( &robot, &cargo );
+    return_center_pt_info ( &robot, &cargo, &cargoAngle );
     preRobot.x = robot.x;
     preRobot.y = robot.y;
     if ( abs(cargo.x - preCargo.x) < 20 && abs(cargo.y - preCargo.y) < 20 ) {
         preCargo.x = cargo.x;
         preCargo.y = cargo.y;
-        dis   = sqrt  ( pow ( cargo.x - robot.x, 2 ) + pow ( cargo.y - robot.y, 2 ) );
-        angle = atan2 ( cargo.y - robot.y, cargo.x - robot.x) * 180.0 / M_PI;
         return 1;
     } else {        // if cargo pos. is not valid, do not update dis.
         cargo.x = preCargo.x;
@@ -181,8 +186,22 @@ int MMC_Controller :: get_latest_pos (int data) {
         return 0;
     }
   }
-  return_center_pt_info ( &preRobot, &preCargo );
+  return_center_pt_info ( &preRobot, &preCargo, &cargoAngle );
   return 1;
+}
+
+void MMC_Controller :: update_goal_info_using_cargo_pos (void) {
+    goal.x = cargo.x + 40 * cosd(cargoAngle);
+    goal.y = cargo.y + 40 * sind(cargoAngle);
+    dis    = sqrt  ( pow ( goal.x - robot.x, 2 ) + pow ( goal.y - robot.y, 2 ) );
+    angle  = atan2 ( goal.y - robot.y, goal.x - robot.x) * 180.0 / M_PI;
+}
+
+void MMC_Controller :: set_cargo_as_goal (void) {
+    goal.x = cargo.x;
+    goal.y = cargo.y;
+    dis    = sqrt  ( pow ( goal.x - robot.x, 2 ) + pow ( goal.y - robot.y, 2 ) );
+    angle  = atan2 ( goal.y - robot.y, goal.x - robot.x) * 180.0 / M_PI;
 }
 
 /*
@@ -215,46 +234,77 @@ static void* actuation_THREAD ( void *threadid ) {
     float dis2 = 0.0;                   // distance from robot to destination
     float contactPos[2] = {0,0};        // position when contact happens
 
+    int wayPoint_x[3] = {500, 200, 200};
+    int wayPoint_y[3] = {150, 150, 300};
+    int iWaypoint = -1;
     int fCargoMove = 0;                 // whether or not robot has successfully moved cargo
     while (fThread) {
-      presentTime = get_present_time ();
-      timeElapsed = presentTime - startTime;
-
-      int rst = ctr.get_latest_pos (1); // get current position info. of robot and cargo
-      //printf("robot (%d, %d), cargo (%d, %d)\n", robotPos.x, robotPos.y, cargoPos.x, cargoPos.y);
-
-      if ( ! ctr.fContact ) {         // if contact has not happended ...
-        if ( rst ) {                  // if cargo detection is valid ...
-            coil.set_angle ( ctr.angle );   // set moving angle to coil
-            coil.rotate_to_new_angle ();
-        } else {                        // if cargo detection is not valid ...
-            rst = ctr.check_contact ();     // check if contact happened
-            if (rst) {                      // if robot has contacted cargo ...
-              contactPos[0] = ctr.robot.x;  // record the robot position when contact happens
-              contactPos[1] = ctr.robot.y;
-              printf("robot has touched cargo.\n");
-            }                               // otherwise just igore this detection
-        }
-      } else {                      // if contact has happened
-        if ( fCargoMove ) {             // if robot has moved cargo
-          movingAngle = atan2(240 - ctr.robot.y, 250 - ctr.robot.x) * 180.0 / M_PI;
-          coil.set_angle ( movingAngle );
-          coil.rotate_to_new_angle ();
-          dis2 = sqrt ( pow ( 250 - ctr.robot.x, 2 ) + pow ( 240 - ctr.robot.y, 2 ) );
-          if (dis2 < 15)
-              fThread = 0;
-        } else {                        // if robot has not moved cargo
-          float tempDis = sqrt  ( pow ( ctr.robot.x - contactPos[0], 2 ) + pow ( ctr.robot.y - contactPos[1], 2 ) );
-          if (tempDis > 40)
-            fCargoMove = 1;
-        }
-      }
-      if (timeElapsed >= periodTime) {
-          while (timeElapsed >= periodTime) {
+        presentTime = get_present_time ();          // get present time
+        timeElapsed = presentTime - startTime;      // calc. how much time has passed
+        if (timeElapsed >= periodTime) {
+            while (timeElapsed >= periodTime) {
               timeElapsed = timeElapsed - periodTime;
-          }
-          startTime = presentTime - timeElapsed;
-      }
+            }
+            startTime = presentTime - timeElapsed;
+        }
+
+        int rst = ctr.get_latest_pos (1);           // get current position info. of robot and cargo
+        //printf("robot (%d, %d), cargo (%d, %d)\n", robotPos.x, robotPos.y, cargoPos.x, cargoPos.y);
+
+        switch (ctr.state) {
+            case 0:                     // moving to cargo state
+                if (rst) {               // if cargo detection is valid ...
+                    ctr.update_goal_info_using_cargo_pos();
+                    coil.set_angle ( ctr.angle );       // set moving angle to coil
+                    coil.rotate_to_new_angle ();
+
+                    if (ctr.dis < 10)                   // if reaching the goal
+                        ctr.state = 1;
+
+                } else {
+                    // in this state, just igore abnormal detection
+                }
+                break;
+            case 1:                     // align state
+                ctr.set_cargo_as_goal ();
+                coil.set_angle ( ctr.angle );       // set moving angle to coil
+                coil.rotate_to_new_angle ();
+                ctr.state = 2;
+                break;
+            case 2:
+                if ( ! ctr.fContact ) {                 // if contact has not happended ...
+                    if ( rst ) {                            // if cargo detection is valid ...
+                        ctr.set_cargo_as_goal ();
+                        coil.set_angle ( ctr.angle );       // set moving angle to coil
+                        coil.rotate_to_new_angle ();
+                    } else {                        // if cargo detection is not valid ...
+                        rst = ctr.check_contact ();     // check if contact happened
+                        if (rst) {                      // if robot has contacted cargo ...
+                            contactPos[0] = ctr.robot.x;  // record the robot position when contact happens
+                            contactPos[1] = ctr.robot.y;
+                            printf("robot has touched cargo.\n");
+                        }                               // otherwise just igore this detection
+                    }
+                } else {                      // if contact has happened
+                    float tempDis = sqrt  ( pow ( ctr.robot.x - contactPos[0], 2 ) + pow ( ctr.robot.y - contactPos[1], 2 ) );
+                    if (tempDis > 40)
+                        ctr.state = 3;
+                }
+                break;
+            case 3:
+                if (iWaypoint > 2)
+                    fThread = 0;
+                movingAngle = atan2(wayPoint_x[iWaypoint] - ctr.robot.y, wayPoint_y[iWaypoint] - ctr.robot.x) * 180.0 / M_PI;
+                coil.set_angle ( movingAngle );
+                coil.rotate_to_new_angle ();
+                dis2 = sqrt ( pow ( wayPoint_x[iWaypoint] - ctr.robot.x, 2 ) + pow ( wayPoint_y[iWaypoint] - ctr.robot.y, 2 ) );
+                if (dis2 < 15)
+                    iWaypoint ++;
+                else {                        // if robot has not moved cargo
+
+                }
+        }
+
       //printf("time: %.3f\n", timeElapsed);
       /* calc. field in x-y directions */
       if (fKey) {
