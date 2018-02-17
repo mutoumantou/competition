@@ -258,9 +258,10 @@ static void* actuation_THREAD ( void *threadid ) {
                     coil.set_angle ( ctr.angle );       // set moving angle to coil
                     coil.rotate_to_new_angle ();
 
-                    if (ctr.dis < 10)                   // if reaching the goal
+                    if (ctr.dis < 10) {                   // if reaching the goal
                         ctr.state = 1;
-
+                        printf("reach state 1.\n");
+                    }
                 } else {
                     // in this state, just igore abnormal detection
                 }
@@ -270,6 +271,7 @@ static void* actuation_THREAD ( void *threadid ) {
                 coil.set_angle ( ctr.angle );       // set moving angle to coil
                 coil.rotate_to_new_angle ();
                 ctr.state = 2;
+                printf("reach state 2.\n");
                 break;
             case 2:
                 if ( ! ctr.fContact ) {                 // if contact has not happended ...
@@ -287,8 +289,10 @@ static void* actuation_THREAD ( void *threadid ) {
                     }
                 } else {                      // if contact has happened
                     float tempDis = sqrt  ( pow ( ctr.robot.x - contactPos[0], 2 ) + pow ( ctr.robot.y - contactPos[1], 2 ) );
-                    if (tempDis > 40)
+                    if (tempDis > 30) {
                         ctr.state = 3;
+                        printf("reach state 3.\n");
+                    }
                 }
                 break;
             case 3:
@@ -303,27 +307,28 @@ static void* actuation_THREAD ( void *threadid ) {
                 else {                        // if robot has not moved cargo
 
                 }
+                break;
         }
 
-      //printf("time: %.3f\n", timeElapsed);
-      /* calc. field in x-y directions */
-      if (fKey) {
-          if (directionCode == -1) {
+        //printf("time: %.3f\n", timeElapsed);
+        /* calc. field in x-y directions */
+        if (fKey) {
+            if (directionCode == -1) {
               coil.stop_output ();
-          } else {
+            } else {
               coil.set_angle (directionCode * 90.0);
               coil.rotate_to_new_angle ();
-          }
-          fKey = 0;                   // reset key flag
-      }
+            }
+            fKey = 0;                   // reset key flag
+        }
 
-      /* decide z field amplitude based on time */
-      if (directionCode != -1) {
+        /* decide z field amplitude based on time */
+        if (directionCode != -1) {
           zOutput = -1.0 * ampZ * timeElapsed / periodTime;         // make the object tail tilt up
           coil.set_z_field_volt ( zOutput );
-      }
-      coil.output_signal ();
-      my_sleep(10);
+        }
+        coil.output_signal ();
+        my_sleep(10);
     }
     coil.stop_output();
     s826_close();
