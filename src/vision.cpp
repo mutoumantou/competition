@@ -5,7 +5,7 @@ static FWcamera cam; // create a new instance of FWcamera
 static Mat presentFrame = Mat(480,640,CV_8UC3);            // present captured frame
 static Mat frameForDisplay = Mat(480,640,CV_8UC3);         // different with presentFrame by annotation/drawing
 static int copyLock = 0;
-static int fCamera = 1;                                 // 0: workstation, using FWcamera; 1: laptop, use webcamera
+static int fCamera = 0;                                 // 0: workstation, using FWcamera; 1: laptop, use webcamera
 static int fArena  = 0;                                 // 0: hide; 1: show digital arena
 
 static int thresholdPara = 65;
@@ -35,14 +35,17 @@ static void* video_stream_THREAD ( void *threadid ) {
         Mat img_m_gray;
 
         if ( fCamera ) {
-            VideoCapture cap;               // may cause crash problem of GTK2.0 conflick with GTK3.0 on workstation computer
             Mat tempFrame = Mat(480,640,CV_8UC3);
+            /*
+            VideoCapture cap;               // may cause crash problem of GTK2.0 conflick with GTK3.0 on workstation computer
+
             // open the default camera, use something different from 0 otherwise;
             // Check VideoCapture documentation.
             if ( !cap.open(0) )
                 return 0;
 
             cap >> presentFrame;
+            */
             presentFrame.copyTo(tempFrame);
 
 
@@ -84,10 +87,11 @@ static void* video_stream_THREAD ( void *threadid ) {
 
         //blur      ( img_m, binaryImg, Size(4,4) );       // blur image to remove small blips etc
         threshold    ( img_m_gray, binaryImg, thresholdPara, 255, THRESH_BINARY_INV );
-        cvtColor ( binaryImg, img_m_color, CV_GRAY2BGR );
+        //cvtColor ( binaryImg, img_m_color, CV_GRAY2BGR );
+        cvtColor ( img_m_gray, img_m_color, CV_GRAY2BGR );
         findContours ( binaryImg, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) ); //find contours
 
-        if (contours.size() < 2)
+        if (contours.size() < 1)
             printf("contours size is %d.\n", (int)contours.size());
         else {
     		//first, find the largest contour    ...   Contour classification!
@@ -112,7 +116,37 @@ static void* video_stream_THREAD ( void *threadid ) {
 
             RotatedRect rotatedBoundingRect1, rotatedBoundingRect2;
             rotatedBoundingRect1 = minAreaRect( Mat( contours [iLargestContour] ) );
-            rotatedBoundingRect2 = minAreaRect( Mat( contours [i2ndContour] ) );
+            if (i2ndContour == -1) {
+                while (fCargoPos);
+                fCargoPos = 1;
+                cargoPos.x = 0;
+                cargoPos.y = 0;
+                fCargoPos = 0;
+            } else {
+                rotatedBoundingRect2 = minAreaRect( Mat( contours [i2ndContour] ) );
+                /* get center point position of cargo */
+                while (fCargoPos);
+                fCargoPos = 1;
+                cargoPos.x = rotatedBoundingRect2.center.x;
+                cargoPos.y = rotatedBoundingRect2.center.y;
+                fCargoPos = 0;
+                Point2f rect_points2[4];
+                rotatedBoundingRect2.points( rect_points2 );
+                for (int j = 0; j < 4; j ++) {
+                    line( img_m_color, rect_points2[j], rect_points2[(j+1)%4], Scalar(255,0,0), 1, 8 );
+                }
+                float tempAngle = 0;
+                if (rotatedBoundingRect2.size.width < rotatedBoundingRect2.size.height) {
+                    tempAngle = -1 * rotatedBoundingRect2.angle - 90;
+                } else
+                    tempAngle = -1 * rotatedBoundingRect2.angle;
+                //printf("angle %.3f\n", tempAngle);
+                while (fCargoAngle);
+                fCargoAngle = 1;
+                cargoAngle = tempAngle;
+                fCargoAngle = 0;
+            }
+
             //printf("width: %.3f, height: %.3f, angle: %.3f\n", rotatedBoundingRect2.size.width, rotatedBoundingRect2.size.height, rotatedBoundingRect2.angle);
             /* get center point position of robot */
             while (fRobotPos);
@@ -121,36 +155,17 @@ static void* video_stream_THREAD ( void *threadid ) {
             robotPos.y = rotatedBoundingRect1.center.y;
             fRobotPos = 0;
 
-            /* get center point position of cargo */
-            while (fCargoPos);
-            fCargoPos = 1;
-            cargoPos.x = rotatedBoundingRect2.center.x;
-            cargoPos.y = rotatedBoundingRect2.center.y;
-            fCargoPos = 0;
-
             float angle;
             angle = rotatedBoundingRect1.angle;
 
-            Point2f rect_points1[4], rect_points2[4];
+            Point2f rect_points1[4];
             rotatedBoundingRect1.points( rect_points1 );
-            rotatedBoundingRect2.points( rect_points2 );
 
             /* draw detected rect. */
             for (int j = 0; j < 4; j ++) {
                 line( img_m_color, rect_points1[j], rect_points1[(j+1)%4], Scalar(255,0,0), 1, 8 );
-                line( img_m_color, rect_points2[j], rect_points2[(j+1)%4], Scalar(255,0,0), 1, 8 );
             }
 
-            float tempAngle = 0;
-            if (rotatedBoundingRect2.size.width < rotatedBoundingRect2.size.height) {
-                tempAngle = -1 * rotatedBoundingRect2.angle - 90;
-            } else
-                tempAngle = -1 * rotatedBoundingRect2.angle;
-            //printf("angle %.3f\n", tempAngle);
-            while (fCargoAngle);
-            fCargoAngle = 1;
-            cargoAngle = tempAngle;
-            fCargoAngle = 0;
     	}
 
         /* draw digital arena if needed */

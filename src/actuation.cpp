@@ -9,6 +9,7 @@ static float periodTime = 1.0 / freq;   // time taken per period
 static float ampXY = 1.0;             //field amplitude in XY plane in voltage
 static float tiltAngle = 45.0;      // tilting angle
 static float ampZ  = ampXY * tand(tiltAngle);
+static int iCargoType = 1;                         // 0: rectangle; 1: circle
 
 /* send signal to amplifiers */
 #define Coil_PX 0
@@ -29,7 +30,7 @@ Coil_System :: Coil_System ( void ) {
     fGradient = 0;
     /* ensure robot is init. aligned with +x */
     for (int i = 0; i < 10; i ++) {
-        uniformV[0] = ampXY * i * 0.1;
+        uniformV[0] = 1 * ampXY * i * 0.1;
         output_signal ();
         my_sleep(50);
     }
@@ -107,7 +108,7 @@ void Coil_System :: rotate_to_new_angle ( void ) {
 
     /* gently rotate robot */
     uniformV[2] = 0;
-
+    fGradient = 1;
     for (int i = 0; i < abs(del); i ++) {
         angleOld = angleOld + step;
         uniformV[0] = cosd(angleOld) * ampXY;
@@ -116,6 +117,7 @@ void Coil_System :: rotate_to_new_angle ( void ) {
         output_signal ();
         my_sleep(10);
     }
+    fGradient = 0;
     angleOld = angle;
 }
 
@@ -191,8 +193,9 @@ int MMC_Controller :: get_latest_pos (int data) {
 }
 
 void MMC_Controller :: update_goal_info_using_cargo_pos (void) {
-    goal.x = cargo.x + 40 * cosd(cargoAngle);
-    goal.y = cargo.y + 40 * sind(cargoAngle);
+    goal.x = cargo.x + 120 * cosd(cargoAngle);
+    goal.y = cargo.y + 120 * sind(cargoAngle);
+    printf("robot (%d, %d) cargo (%d, %d), goal (%d, %d)\n", robot.x, robot.y, cargo.x, cargo.y, goal.x, goal.y);
     dis    = sqrt  ( pow ( goal.x - robot.x, 2 ) + pow ( goal.y - robot.y, 2 ) );
     angle  = atan2 ( goal.y - robot.y, goal.x - robot.x) * 180.0 / M_PI;
 }
@@ -202,6 +205,8 @@ void MMC_Controller :: set_cargo_as_goal (void) {
     goal.y = cargo.y;
     dis    = sqrt  ( pow ( goal.x - robot.x, 2 ) + pow ( goal.y - robot.y, 2 ) );
     angle  = atan2 ( goal.y - robot.y, goal.x - robot.x) * 180.0 / M_PI;
+    printf("cargo (%d, %d)\n", cargo.x, cargo.y);
+
 }
 
 /*
@@ -234,9 +239,9 @@ static void* actuation_THREAD ( void *threadid ) {
     float dis2 = 0.0;                   // distance from robot to destination
     float contactPos[2] = {0,0};        // position when contact happens
 
-    int wayPoint_x[3] = {500, 200, 200};
-    int wayPoint_y[3] = {150, 150, 300};
-    int iWaypoint = -1;
+    int wayPoint_x[3] = {500, 160, 160};
+    int wayPoint_y[3] = {150, 150, 240};
+    int iWaypoint = 0;
     int fCargoMove = 0;                 // whether or not robot has successfully moved cargo
     while (fThread) {
         presentTime = get_present_time ();          // get present time
@@ -254,11 +259,14 @@ static void* actuation_THREAD ( void *threadid ) {
         switch (ctr.state) {
             case 0:                     // moving to cargo state
                 if (rst) {               // if cargo detection is valid ...
-                    ctr.update_goal_info_using_cargo_pos();
+                    if (iCargoType == 0)
+                        ctr.update_goal_info_using_cargo_pos();
+                    else
+                        ctr.set_cargo_as_goal ();
                     coil.set_angle ( ctr.angle );       // set moving angle to coil
                     coil.rotate_to_new_angle ();
 
-                    if (ctr.dis < 10) {                   // if reaching the goal
+                    if (ctr.dis < 40) {                   // if reaching the goal
                         ctr.state = 1;
                         printf("reach state 1.\n");
                     }
@@ -298,11 +306,12 @@ static void* actuation_THREAD ( void *threadid ) {
             case 3:
                 if (iWaypoint > 2)
                     fThread = 0;
-                movingAngle = atan2(wayPoint_x[iWaypoint] - ctr.robot.y, wayPoint_y[iWaypoint] - ctr.robot.x) * 180.0 / M_PI;
+                movingAngle = atan2(wayPoint_y[iWaypoint] - ctr.robot.y, wayPoint_x[iWaypoint] - ctr.robot.x) * 180.0 / M_PI;
+                printf("waypoint (%d, %d), robot (%d, %d), angle %.3f\n", wayPoint_x[iWaypoint], wayPoint_y[iWaypoint],ctr.robot.x, ctr.robot.y, movingAngle);
                 coil.set_angle ( movingAngle );
                 coil.rotate_to_new_angle ();
                 dis2 = sqrt ( pow ( wayPoint_x[iWaypoint] - ctr.robot.x, 2 ) + pow ( wayPoint_y[iWaypoint] - ctr.robot.y, 2 ) );
-                if (dis2 < 15)
+                if (dis2 < 30)
                     iWaypoint ++;
                 else {                        // if robot has not moved cargo
 
