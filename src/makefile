@@ -13,13 +13,13 @@ LIBS = -lm -ldc1394 #-l826_64
 _DEPS = GUI_master.hpp general_header.hpp vision.hpp FWcamera.hpp actuation.hpp keyboard.hpp s826.hpp s826api.h
 DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
 
-_OBJ = hellomake.o GUI_master.o vision.o FWcamera.o general_fun.o actuation.o keyboard.o s826_dummy.o
+_OBJ = main.o GUI_master.o vision.o FWcamera.o general_fun.o actuation.o keyboard.o s826_dummy.o
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
 $(ODIR)/%.o: %.cpp $(DEPS)
 	$(CC) -c $(GTKFLAGS) -o $@ $< $(GTKLIBS) $(CFLAGS) $(LIBS)
 
-hellomake: $(OBJ)
+main: $(OBJ)
 	$(CC) $(GTKFLAGS) -o $@ $^ $(GTKLIBS) $(CFLAGS) $(LIBS)
 
 .PHONY: clean

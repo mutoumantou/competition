@@ -5,16 +5,175 @@ static FWcamera cam; // create a new instance of FWcamera
 static Mat presentFrame = Mat(480,640,CV_8UC3);            // present captured frame
 static Mat frameForDisplay = Mat(480,640,CV_8UC3);         // different with presentFrame by annotation/drawing
 static int copyLock = 0;
-static int fCamera = 1;                                 // 0: workstation, using FWcamera; 1: laptop, use webcamera
 static int fArena  = 0;                                 // 0: hide; 1: show digital arena
-
+static int fSim = 0;                            // 0: real experiment; 1: simulation
 static int thresholdPara = 65;
 
 static Point robotPos, cargoPos;
 static int fRobotPos=0, fCargoPos=0;                    // data lock
 
-static float cargoAngle = 0;                            // cargo orientation
-static int fCargoAngle = 0;
+static float robotAngle = 0, cargoAngle = 0;                            // cargo orientation
+static int fRobotAngle = 0, fCargoAngle = 0;
+
+/* define the method for sorting contours */
+static bool compareContourArea (vector<Point> contour1, vector<Point> contour2) {
+    double i = fabs ( contourArea (contour1, false) );
+    double j = fabs ( contourArea (contour2, false) );
+    return (i < j);
+}
+
+/* class definition */
+class Vision_Master {
+    private:
+        Mat binaryImg;          // binary image
+        Mat grayImg;            // gray image
+
+        vector<vector<Point> > contours;
+        vector<Vec4i> hierarchy;
+        RotatedRect boundingRect1, boundingRect2;
+    public:
+        Mat colorImg;
+        int nContours;
+        vector<Point> sortedContour1, sortedContour2;
+        void get_latest_frame   (void);
+        void convert_to_binary  (void);
+        void convert_to_color   (void);
+        void find_contours      (void);
+        void sort_contours      (void);
+        void get_bounding_rect  (void);
+        void update_robot_and_cargo_pos   (void);
+        void draw_detection     (void);
+        void update_robot_and_cargo_angle (void);
+};
+
+/* get the latest frame */
+void Vision_Master :: get_latest_frame (void) {
+    if ( fSim ) {                            // If for testing
+        Mat whatever = imread("4.png", IMREAD_GRAYSCALE );
+        whatever.copyTo ( grayImg );
+    } else {                                 // if for real experiments
+        unsigned char *inImage;
+        //printf("before grab\n");
+        inImage = cam.grabAframe();
+        //printf("after grab\n");
+        if(inImage == NULL)	{
+            g_print("Error in firewire stream! Reattempting...\n");
+            my_sleep(1); 																										// I don't know what the wait delay should be
+        }
+        Mat img_m = Mat(480, 640, CV_8UC1, inImage);
+        img_m.copyTo (grayImg);
+    }
+}
+
+void Vision_Master :: convert_to_binary (void) {
+    threshold ( grayImg, binaryImg, thresholdPara, 255, THRESH_BINARY_INV );
+}
+
+void Vision_Master :: convert_to_color (void) {
+    cvtColor ( grayImg, colorImg, CV_GRAY2BGR );
+}
+
+void Vision_Master :: find_contours (void) {
+    findContours ( binaryImg, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
+    nContours = contours.size();
+    if (nContours < 1)
+        printf("Error: find no contours.\n");
+}
+
+void Vision_Master :: sort_contours (void) {
+    sort ( contours.begin(), contours.end(), compareContourArea );
+    if (nContours >= 1)
+        sortedContour1 = contours[nContours-1];
+    if (nContours >= 2)
+        sortedContour2 = contours[nContours-2];
+}
+
+void Vision_Master :: get_bounding_rect (void) {
+    if (nContours >= 1)
+        boundingRect1 = minAreaRect( Mat( sortedContour1 ) );
+    if (nContours >= 2)
+        boundingRect2 = minAreaRect( Mat( sortedContour2 ) );
+}
+
+void Vision_Master :: update_robot_and_cargo_pos (void) {
+    if (nContours >= 1) {
+        while (fRobotPos);
+        fRobotPos = 1;
+        robotPos.x = boundingRect1.center.x;
+        robotPos.y = boundingRect1.center.y;
+        fRobotPos = 0;
+
+        if ( nContours < 2 ) {
+            while (fCargoPos);
+            fCargoPos = 1;
+            cargoPos.x = 0;
+            cargoPos.y = 0;
+            fCargoPos = 0;
+        } else {
+            while (fCargoPos);
+            fCargoPos = 1;
+            cargoPos.x = boundingRect2.center.x;
+            cargoPos.y = boundingRect2.center.y;
+            fCargoPos = 0;
+        }
+    }
+
+}
+
+void Vision_Master :: draw_detection (void) {
+    if (nContours >= 1) {
+        Point2f rect_points[4];
+        boundingRect1.points( rect_points );
+        for (int i = 0; i < 4; i ++) {
+            line( colorImg, rect_points[i], rect_points[(i+1)%4], Scalar(255,0,0), 1, 8 );
+        }
+    }
+    if (nContours >= 2) {
+        Point2f rect_points[4];
+        boundingRect2.points( rect_points );
+        for (int i = 0; i < 4; i ++) {
+            line( colorImg, rect_points[i], rect_points[(i+1)%4], Scalar(255,0,0), 1, 8 );
+        }
+    }
+}
+
+void Vision_Master :: update_robot_and_cargo_angle (void) {
+    if ( nContours >= 2 ) {
+        float tempAngle = boundingRect1.angle;          // get angle of rotated rect
+        float width  = boundingRect1.size.width;
+        float height = boundingRect1.size.height;
+        int checkPt[8];
+        printf("angle: %.3f, width: %.3f, height: %.3f\n", tempAngle, width, height);
+        checkPt[0] = boundingRect1.center.x - 0.5 * width  * cosd(tempAngle);
+        checkPt[1] = boundingRect1.center.y - 0.5 * height * sind(tempAngle);
+        checkPt[2] = boundingRect1.center.x + 0.5 * height * sind(tempAngle);
+        checkPt[3] = boundingRect1.center.y - 0.5 * height * cosd(tempAngle);
+        checkPt[4] = boundingRect1.center.x + 0.5 * width  * cosd(tempAngle);
+        checkPt[5] = boundingRect1.center.y + 0.5 * height * sind(tempAngle);
+        checkPt[6] = boundingRect1.center.x - 0.5 * width  * sind(tempAngle);
+        checkPt[7] = boundingRect1.center.y + 0.5 * height * cosd(tempAngle);
+        circle(colorImg, Point(boundingRect1.center.x, boundingRect1.center.y), 10, Scalar(255,255,255));
+        circle(colorImg, Point(checkPt[0], checkPt[1]), 5, Scalar(255,0,0));
+        circle(colorImg, Point(checkPt[2], checkPt[3]), 5, Scalar(255,0,0));
+        circle(colorImg, Point(checkPt[4], checkPt[5]), 5, Scalar(255,0,0));
+        circle(colorImg, Point(checkPt[6], checkPt[7]), 5, Scalar(255,0,0));
+
+        while (fRobotAngle);
+        fRobotAngle = 1;
+        robotAngle = tempAngle;
+        fRobotAngle = 0;
+
+        tempAngle = 0;
+        if (boundingRect2.size.width < boundingRect2.size.height) {
+            tempAngle = -1 * boundingRect2.angle - 90;
+        } else
+            tempAngle = -1 * boundingRect2.angle;
+        while (fCargoAngle);
+        fCargoAngle = 1;
+        cargoAngle = tempAngle;
+        fCargoAngle = 0;
+    }
+}
 
 /* draw digital arena on image */
 static void draw_digital_arena ( Mat * data ) {
@@ -28,184 +187,45 @@ static void draw_digital_arena ( Mat * data ) {
 
 static void* video_stream_THREAD ( void *threadid ) {
     printf("at the start of video_stream_THREAD.\n");
-    /* use laptop webcamera instead of FWcamera */
+    Vision_Master myVision;
 
     while ( fThread ) {
-        Mat img_m_color, binaryImg;
-        Mat img_m_gray;
+        myVision.get_latest_frame();
+        myVision.convert_to_binary();
+        myVision.convert_to_color();
 
-        if ( fCamera ) {                            // If for testing
-            Mat tempFrame = Mat(480,640,CV_8UC3);
-            /*
-            VideoCapture cap;               // may cause crash problem of GTK2.0 conflick with GTK3.0 on workstation computer
+        myVision.find_contours ();
+        myVision.sort_contours ();
 
-            // open the default camera, use something different from 0 otherwise;
-            // Check VideoCapture documentation.
-            if ( !cap.open(0) )
-                return 0;
+        myVision.get_bounding_rect ();
 
-            cap >> presentFrame;
-            */
-            presentFrame.copyTo(tempFrame);
-
-                //printf("frame size (%d, %d), depth %d channel %d elesize %d type %d\n", tempFrame.rows, tempFrame.cols, tempFrame.depth(), tempFrame.channels(), tempFrame.elemSize(), tempFrame.type());
-            for (int i = 0; i < presentFrame.rows; i ++) {
-                for (int j = 0; j < presentFrame.cols; j ++) {
-                    tempFrame.at<unsigned char>(i,j*3) = presentFrame.at<unsigned char>(i,j*3+2);
-                    tempFrame.at<unsigned char>(i,j*3+2) = presentFrame.at<unsigned char>(i,j*3);
-                }
-            }
-
-            //tempFrame.copyTo(presentFrame);
-            //cvtColor ( presentFrame, img_m_gray, CV_RGB2GRAY );
-            //printf("gray %d %d %d %d\n", img_m_gray.cols, img_m_gray.rows, img_m_gray.channels(), img_m_gray.depth());
-
-            Mat whatever = imread("0.png", IMREAD_GRAYSCALE );
-            //if (whatever.data != NULL) {
-            //    printf("happy reading %d %d %d %d\n", whatever.cols, whatever.rows, whatever.channels(), whatever.depth());
-            //}
-            whatever.copyTo(img_m_gray);
-            //printf("happy reading\n");
-        } else {
-            unsigned char *inImage;
-            //printf("before grab\n");
-            inImage = cam.grabAframe();
-            //printf("after grab\n");
-            if(inImage == NULL)	{
-                g_print("Error in firewire stream! Reattempting...\n");
-                my_sleep(1); 																										// I don't know what the wait delay should be
-            }
-            Mat img_m = Mat(480, 640, CV_8UC1, inImage);
-            img_m.copyTo (img_m_gray);
-
-
-            //cvtColor(img_m, img_m_color, CV_GRAY2BGR);
-        }
-        //printf("marker 1\n");
-        /* object detection */
-        vector<vector<Point> > contours;
-        vector<Vec4i> hierarchy;
-
-        //dilate( img_m, img_m, Mat(), Point(-1, -1), 10, 1, 1);
-	    //erode( img_m, img_m, Mat(), Point(-1, -1), 15, 1, 1);
-
-        //blur      ( img_m, binaryImg, Size(4,4) );       // blur image to remove small blips etc
-        threshold    ( img_m_gray, binaryImg, thresholdPara, 255, THRESH_BINARY_INV );
-        //cvtColor ( binaryImg, img_m_color, CV_GRAY2BGR );
-        cvtColor ( img_m_gray, img_m_color, CV_GRAY2BGR );
-        printf("before find contours\n");
-        findContours ( binaryImg, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) ); //find contours
-        printf("after find contours\n");
-        if (contours.size() < 1)
-            printf("contours size is %d.\n", (int)contours.size());
-        else {
-    		//first, find the largest contour    ...   Contour classification!
-    		int largestArea = -1;
-            int secondArea = -1;
-
-            int iLargestContour = -1;               // index of largest contour
-            int i2ndContour = -1;
-
-    		for(int i = 0; i < contours.size(); i++ ) {
-    			int a = contourArea(contours[i], false);           //  Find the area of contour
-    			if ( a > largestArea ) {                           // if current contour is bigger ...
-                    secondArea = largestArea;
-                    i2ndContour = iLargestContour;
-    				largestArea = a;
-    				iLargestContour = i;                 //Store the index of largest contour
-    			} else if ( a > secondArea ) {
-                    secondArea = a;
-                    i2ndContour = i;
-                }
-    		}
-
-            RotatedRect rotatedBoundingRect1, rotatedBoundingRect2;
-            rotatedBoundingRect1 = minAreaRect( Mat( contours [iLargestContour] ) );
-            if (i2ndContour == -1) {
-                while (fCargoPos);
-                fCargoPos = 1;
-                cargoPos.x = 0;
-                cargoPos.y = 0;
-                fCargoPos = 0;
-            } else {
-                rotatedBoundingRect2 = minAreaRect( Mat( contours [i2ndContour] ) );
-                /* get center point position of cargo */
-                while (fCargoPos);
-                fCargoPos = 1;
-                cargoPos.x = rotatedBoundingRect2.center.x;
-                cargoPos.y = rotatedBoundingRect2.center.y;
-                fCargoPos = 0;
-                Point2f rect_points2[4];
-                rotatedBoundingRect2.points( rect_points2 );
-                for (int j = 0; j < 4; j ++) {
-                    line( img_m_color, rect_points2[j], rect_points2[(j+1)%4], Scalar(255,0,0), 1, 8 );
-                }
-                float tempAngle = 0;
-                if (rotatedBoundingRect2.size.width < rotatedBoundingRect2.size.height) {
-                    tempAngle = -1 * rotatedBoundingRect2.angle - 90;
-                } else
-                    tempAngle = -1 * rotatedBoundingRect2.angle;
-                //printf("angle %.3f\n", tempAngle);
-                while (fCargoAngle);
-                fCargoAngle = 1;
-                cargoAngle = tempAngle;
-                fCargoAngle = 0;
-            }
-
-            //printf("width: %.3f, height: %.3f, angle: %.3f\n", rotatedBoundingRect2.size.width, rotatedBoundingRect2.size.height, rotatedBoundingRect2.angle);
-            /* get center point position of robot */
-            while (fRobotPos);
-            fRobotPos = 1;
-            robotPos.x = rotatedBoundingRect1.center.x;
-            robotPos.y = rotatedBoundingRect1.center.y;
-            fRobotPos = 0;
-
-            float angle;
-            angle = rotatedBoundingRect1.angle;
-
-            Point2f rect_points1[4];
-            rotatedBoundingRect1.points( rect_points1 );
-
-            /* draw detected rect. */
-            for (int j = 0; j < 4; j ++) {
-                line( img_m_color, rect_points1[j], rect_points1[(j+1)%4], Scalar(255,0,0), 1, 8 );
-            }
-
-    	}
+        myVision.update_robot_and_cargo_pos ();
+        myVision.draw_detection ();
+        myVision.update_robot_and_cargo_angle ();
 
         /* draw digital arena if needed */
         if ( fArena )
-            draw_digital_arena ( &img_m_color );
+            draw_digital_arena ( &myVision.colorImg );
 
         while (copyLock);
         copyLock = 1;
-        img_m_color.copyTo(frameForDisplay);
+        myVision.colorImg.copyTo(frameForDisplay);
         copyLock = 0;
         my_sleep(30);           // correspond to 30 Hz camera rate
-        //my_sleep(1000);
     }
 
-    //img_m = Mat(480, 640, CV_8UC1, inImage);
-    //if( presentFrame.empty() ) break; // end of video stream
-      //printf("frame size (%d, %d)\n", presentFrame.rows, presentFrame.cols);
-      //imshow("this is you, smile! :)", frame);
-      //if( waitKey(10) == 27 ) break; // stop capturing by pressing ESC
-    //printf("frame size (%d, %d), depth %d channel %d elesize %d type %d\n", tempFrame.rows, tempFrame.cols, tempFrame.depth(), tempFrame.channels(), tempFrame.elemSize(), tempFrame.type());
-
-    // the camera will be closed automatically upon exit
-    // cap.close();
-    if (!fCamera) {
+    if (!fSim) {
         cam.stopGrabbingVideo();
     	my_sleep(100);
     	cam.deinitialize();
         cam.deinitialize();
     }
-
     printf("at the end of video_stream_THREAD.\n");
 }
 
+/* activate the video capture and processing thread */
 void camera_activate (void) {
-    if ( !fCamera ) {
+    if ( !fSim ) {
         if( !cam.initialize() ) {
             g_print("Error: camera could not be found in initVision().\n");
             return;
@@ -217,7 +237,6 @@ void camera_activate (void) {
         }
         my_sleep(100);
     }
-
     fThread = 1;
     pthread_t videoStreamThread;
     pthread_create( &videoStreamThread, NULL, video_stream_THREAD, NULL);  //start vision thread
@@ -261,4 +280,8 @@ void return_center_pt_info ( Point *robot, Point *cargo, float *angle) {
     fCargoAngle = 1;
     (*angle) = cargoAngle;
     fCargoAngle = 0;
+}
+
+void on_cB_simulation_toggled (GtkToggleButton *togglebutton, gpointer data) {
+    fSim = gtk_toggle_button_get_active (togglebutton);
 }

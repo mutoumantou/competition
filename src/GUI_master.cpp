@@ -81,18 +81,24 @@ void GUI_master_activate ( GtkImage *vidWindow, GtkLabel *timeLabel ) {
 
 void GUI_master_deactivate(void) {
     fThread = 0;
-    my_sleep (100);
+    my_sleep (1000);
     //usleep(1e5);
 }
 
 // start/stop camera stream
 void on_toggle_camera_stream_toggled (GtkToggleButton *togglebutton, gpointer data) {
     int d = gtk_toggle_button_get_active (togglebutton);
-    printf("toggle button value %d.\n", d);
+    //printf("toggle button value %d.\n", d);
     if (d) {
-        camera_activate ();
+        if (fCam)
+            printf("camera is already running.\n");
+        else
+            camera_activate ();
     } else {
-        camera_deactivate ();
+        if (!fCam)
+            printf("camera is not working.\n");
+        else
+            camera_deactivate ();
     }
     my_sleep(1000);
     fCam = d;

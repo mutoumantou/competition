@@ -105,6 +105,7 @@
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="adjustment">ad_binaryThreshold</property>
+                <property name="digits">1</property>
                 <signal name="changed" handler="on_spin_binaryThreshold_changed" swapped="no"/>
               </object>
               <packing>
@@ -142,6 +143,7 @@ actuation thread</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
+                <signal name="toggled" handler="on_tB_actuation_toggled" swapped="no"/>
               </object>
               <packing>
                 <property name="expand">False</property>

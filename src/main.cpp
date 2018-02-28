@@ -8,18 +8,12 @@ static void activate (GtkApplication *app, gpointer user_data) {
   GtkImage *vidWindow;
   GtkLabel *timeLabel;
 
-
   GtkBuilder *builder;
 
   builder = gtk_builder_new_from_file ("GUI.glade");
   window  = GTK_WIDGET (gtk_builder_get_object (builder, "mainWindow"));
   vidWindow = GTK_IMAGE  (gtk_builder_get_object (builder, "vidWindow")); // get video window handler
   timeLabel = GTK_LABEL (gtk_builder_get_object (builder, "timeLabel"));    // get time display label handler
-
-  /* link GUI component to callback functions */
-  GtkToggleButton *actuationButton;
-  actuationButton = GTK_TOGGLE_BUTTON (gtk_builder_get_object (builder, "tB_actuation"));
-  g_signal_connect (actuationButton, "toggled", G_CALLBACK (        on_tB_actuation_toggled), NULL);
 
   /* link keyboard input */
   g_signal_connect (window,   "key-press-event", G_CALLBACK(        key_event), NULL);

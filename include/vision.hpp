@@ -12,7 +12,7 @@ using namespace cv;
 extern "C" {
     void on_toggle_arena_toggled (GtkToggleButton *togglebutton, gpointer data);    // show/hide digital arena
     void on_spin_binaryThreshold_changed (GtkEditable *editable, gpointer user_data);
-
+    void on_cB_simulation_toggled (GtkToggleButton *togglebutton, gpointer data);   // toggle between simulation / real mode
 }
 
 /* Functions */
