@@ -143,20 +143,37 @@ void Vision_Master :: update_robot_and_cargo_angle (void) {
         float width  = boundingRect1.size.width;
         float height = boundingRect1.size.height;
         int checkPt[8];
-        printf("angle: %.3f, width: %.3f, height: %.3f\n", tempAngle, width, height);
-        checkPt[0] = boundingRect1.center.x - 0.5 * width  * cosd(tempAngle);
-        checkPt[1] = boundingRect1.center.y - 0.5 * height * sind(tempAngle);
-        checkPt[2] = boundingRect1.center.x + 0.5 * height * sind(tempAngle);
-        checkPt[3] = boundingRect1.center.y - 0.5 * height * cosd(tempAngle);
-        checkPt[4] = boundingRect1.center.x + 0.5 * width  * cosd(tempAngle);
-        checkPt[5] = boundingRect1.center.y + 0.5 * height * sind(tempAngle);
-        checkPt[6] = boundingRect1.center.x - 0.5 * width  * sind(tempAngle);
-        checkPt[7] = boundingRect1.center.y + 0.5 * height * cosd(tempAngle);
+        //printf("angle: %.3f, width: %.3f, height: %.3f\n", tempAngle, width, height);
+        checkPt[0] = boundingRect1.center.x - 0.4 * width  * cosd(tempAngle);
+        checkPt[1] = boundingRect1.center.y - 0.4 * height * sind(tempAngle);
+        checkPt[2] = boundingRect1.center.x + 0.4 * height * sind(tempAngle);
+        checkPt[3] = boundingRect1.center.y - 0.4 * height * cosd(tempAngle);
+        checkPt[4] = boundingRect1.center.x + 0.4 * width  * cosd(tempAngle);
+        checkPt[5] = boundingRect1.center.y + 0.4 * height * sind(tempAngle);
+        checkPt[6] = boundingRect1.center.x - 0.4 * width  * sind(tempAngle);
+        checkPt[7] = boundingRect1.center.y + 0.4 * height * cosd(tempAngle);
+        //printf("binary image channel %d depth %d\n", binaryImg.channels(), binaryImg.depth());
+        //printf("pt1 %d pt2 %d pt3 %d pt4 %d\n", binaryImg.at<unsigned char>(checkPt[1],checkPt[0]),
+        //                                        binaryImg.at<unsigned char>(checkPt[3],checkPt[2]),
+        //                                        binaryImg.at<unsigned char>(checkPt[5],checkPt[4]),
+        //                                        binaryImg.at<unsigned char>(checkPt[7],checkPt[6]));
+
+        int iDir = -1;
+        if (binaryImg.at<unsigned char>(checkPt[1],checkPt[0]) == 0)
+            iDir = 0;
+        else if (binaryImg.at<unsigned char>(checkPt[3],checkPt[2]) == 0)
+            iDir = 1;
+        else if (binaryImg.at<unsigned char>(checkPt[5],checkPt[4]) == 0)
+            iDir = 2;
+        else if (binaryImg.at<unsigned char>(checkPt[7],checkPt[6]) == 0)
+            iDir = 3;
+
         circle(colorImg, Point(boundingRect1.center.x, boundingRect1.center.y), 10, Scalar(255,255,255));
-        circle(colorImg, Point(checkPt[0], checkPt[1]), 5, Scalar(255,0,0));
-        circle(colorImg, Point(checkPt[2], checkPt[3]), 5, Scalar(255,0,0));
-        circle(colorImg, Point(checkPt[4], checkPt[5]), 5, Scalar(255,0,0));
-        circle(colorImg, Point(checkPt[6], checkPt[7]), 5, Scalar(255,0,0));
+        //circle(colorImg, Point(checkPt[0], checkPt[1]), 5, Scalar(255,0,0));
+        //circle(colorImg, Point(checkPt[2], checkPt[3]), 5, Scalar(255,0,0));
+        //circle(colorImg, Point(checkPt[4], checkPt[5]), 5, Scalar(255,0,0));
+        //circle(colorImg, Point(checkPt[6], checkPt[7]), 5, Scalar(255,0,0));
+        circle(colorImg, Point(checkPt[iDir*2], checkPt[iDir*2+1]), 5, Scalar(255,0,0));
 
         while (fRobotAngle);
         fRobotAngle = 1;
