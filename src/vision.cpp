@@ -5,7 +5,7 @@ static FWcamera cam; // create a new instance of FWcamera
 static Mat presentFrame = Mat(480,640,CV_8UC3);            // present captured frame
 static Mat frameForDisplay = Mat(480,640,CV_8UC3);         // different with presentFrame by annotation/drawing
 static int copyLock = 0;
-static int fCamera = 0;                                 // 0: workstation, using FWcamera; 1: laptop, use webcamera
+static int fCamera = 1;                                 // 0: workstation, using FWcamera; 1: laptop, use webcamera
 static int fArena  = 0;                                 // 0: hide; 1: show digital arena
 
 static int thresholdPara = 65;
@@ -34,7 +34,7 @@ static void* video_stream_THREAD ( void *threadid ) {
         Mat img_m_color, binaryImg;
         Mat img_m_gray;
 
-        if ( fCamera ) {
+        if ( fCamera ) {                            // If for testing
             Mat tempFrame = Mat(480,640,CV_8UC3);
             /*
             VideoCapture cap;               // may cause crash problem of GTK2.0 conflick with GTK3.0 on workstation computer
@@ -48,8 +48,6 @@ static void* video_stream_THREAD ( void *threadid ) {
             */
             presentFrame.copyTo(tempFrame);
 
-
-
                 //printf("frame size (%d, %d), depth %d channel %d elesize %d type %d\n", tempFrame.rows, tempFrame.cols, tempFrame.depth(), tempFrame.channels(), tempFrame.elemSize(), tempFrame.type());
             for (int i = 0; i < presentFrame.rows; i ++) {
                 for (int j = 0; j < presentFrame.cols; j ++) {
@@ -58,10 +56,16 @@ static void* video_stream_THREAD ( void *threadid ) {
                 }
             }
 
-            tempFrame.copyTo(presentFrame);
-            cvtColor ( presentFrame, img_m_gray, CV_RGB2GRAY );
+            //tempFrame.copyTo(presentFrame);
+            //cvtColor ( presentFrame, img_m_gray, CV_RGB2GRAY );
+            //printf("gray %d %d %d %d\n", img_m_gray.cols, img_m_gray.rows, img_m_gray.channels(), img_m_gray.depth());
 
-            //Mat img_m_gray = imread("0.png", 0 );
+            Mat whatever = imread("0.png", IMREAD_GRAYSCALE );
+            //if (whatever.data != NULL) {
+            //    printf("happy reading %d %d %d %d\n", whatever.cols, whatever.rows, whatever.channels(), whatever.depth());
+            //}
+            whatever.copyTo(img_m_gray);
+            //printf("happy reading\n");
         } else {
             unsigned char *inImage;
             //printf("before grab\n");
@@ -89,8 +93,9 @@ static void* video_stream_THREAD ( void *threadid ) {
         threshold    ( img_m_gray, binaryImg, thresholdPara, 255, THRESH_BINARY_INV );
         //cvtColor ( binaryImg, img_m_color, CV_GRAY2BGR );
         cvtColor ( img_m_gray, img_m_color, CV_GRAY2BGR );
+        printf("before find contours\n");
         findContours ( binaryImg, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) ); //find contours
-
+        printf("after find contours\n");
         if (contours.size() < 1)
             printf("contours size is %d.\n", (int)contours.size());
         else {
