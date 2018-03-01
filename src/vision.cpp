@@ -8,7 +8,7 @@ static int copyLock = 0;
 static int fArena  = 0;                                 // 0: hide; 1: show digital arena
 static int fSim = 0;                            // 0: real experiment; 1: simulation
 static int thresholdPara = 65;
-
+static int iCargo = 0;                          // cargo type. 0: circle; 1: rectangle; 2: triangle
 static Point robotPos, cargoPos;
 static int fRobotPos=0, fCargoPos=0;                    // data lock
 
@@ -301,4 +301,27 @@ void return_center_pt_info ( Point *robot, Point *cargo, float *angle) {
 
 void on_cB_simulation_toggled (GtkToggleButton *togglebutton, gpointer data) {
     fSim = gtk_toggle_button_get_active (togglebutton);
+}
+
+void on_rB_1_toggled (GtkToggleButton *togglebutton, gpointer data) {
+    int d = gtk_toggle_button_get_active (togglebutton);
+    if (d == 1) {
+        iCargo = 0;
+        printf("cargo selected to circle\n");
+    }
+
+}
+void on_rB_2_toggled (GtkToggleButton *togglebutton, gpointer data) {
+    int d = gtk_toggle_button_get_active (togglebutton);
+    if (d == 1) {
+        iCargo = 1;
+        printf("cargo selected to rectangle\n");
+    }
+}
+void on_rB_3_toggled (GtkToggleButton *togglebutton, gpointer data) {
+    int d = gtk_toggle_button_get_active (togglebutton);
+    if (d == 1) {
+        iCargo = 2;
+        printf("cargo selected to triangle\n");
+    }
 }
