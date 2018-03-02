@@ -2,8 +2,16 @@
 #define VISION
 
 #include "general_header.hpp"
-#include <opencv/cv.h>
-#include <opencv/highgui.h>
+
+/* for OpenCV 2 */
+//#include <opencv/cv.h>
+//#include <opencv/highgui.h>
+
+/* for OpenCV 3 */
+#include "opencv2/objdetect.hpp"
+#include "opencv2/highgui.hpp"
+#include "opencv2/imgproc.hpp"
+
 #include "FWcamera.hpp"
 
 using namespace cv;

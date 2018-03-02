@@ -16,7 +16,7 @@ static float robotAngle = 0, cargoAngle = 0;                            // cargo
 static int fRobotAngle = 0, fCargoAngle = 0;
 
 /* define the method for sorting contours */
-static bool compareContourArea (vector<Point> contour1, vector<Point> contour2) {
+static bool compareContourArea (std::vector<Point> contour1, std::vector<Point> contour2) {
     double i = fabs ( contourArea (contour1, false) );
     double j = fabs ( contourArea (contour2, false) );
     return (i < j);
@@ -28,13 +28,13 @@ class Vision_Master {
         Mat binaryImg;          // binary image
         Mat grayImg;            // gray image
 
-        vector<vector<Point> > contours;
-        vector<Vec4i> hierarchy;
+        std::vector<std::vector<Point> > contours;
+        std::vector<Vec4i> hierarchy;
         RotatedRect boundingRect1, boundingRect2;
     public:
         Mat colorImg;
         int nContours;
-        vector<Point> sortedContour1, sortedContour2;
+        std::vector<Point> sortedContour1, sortedContour2;
         void get_latest_frame   (void);
         void convert_to_binary  (void);
         void convert_to_color   (void);
