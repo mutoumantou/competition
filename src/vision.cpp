@@ -44,6 +44,7 @@ class Vision_Master {
         void update_robot_and_cargo_pos   (void);
         void draw_detection     (void);
         void update_robot_and_cargo_angle (void);
+        void draw_digital_arena (void);
 };
 
 /* get the latest frame */
@@ -193,13 +194,33 @@ void Vision_Master :: update_robot_and_cargo_angle (void) {
 }
 
 /* draw digital arena on image */
-static void draw_digital_arena ( Mat * data ) {
+void Vision_Master :: draw_digital_arena ( void ) {
     /* inner top-left corner @ (7, 61), 5.6 um/pixel */
-    rectangle ( *data, Point(  7, 61), Point(632,418), Scalar(255,0,0) );     // length: 3.5 mm (625 pixels), height: 2 mm (357 pixel)
-    rectangle ( *data, Point(311, 61), Point(320,106), Scalar(255,0,0) );     // length: 50 um; height: 250 um
-    rectangle ( *data, Point(311,177), Point(320,240), Scalar(255,0,0) );     // length: 50 um; height: 350 um
-    line      ( *data, Point(  0, 52), Point(639, 52), Scalar(255,0,0) );
-    line      ( *data, Point(  0,427), Point(639,427), Scalar(255,0,0) );
+    rectangle ( colorImg, Point(  7, 61), Point(632,418), Scalar(255,0,0) );     // length: 3.5 mm (625 pixels), height: 2 mm (357 pixel)
+    rectangle ( colorImg, Point(311, 61), Point(320,106), Scalar(255,0,0) );     // length: 50 um; height: 250 um
+    rectangle ( colorImg, Point(311,177), Point(320,240), Scalar(255,0,0) );     // length: 50 um; height: 350 um
+    line      ( colorImg, Point(  0, 52), Point(639, 52), Scalar(255,0,0) );
+    line      ( colorImg, Point(  0,427), Point(639,427), Scalar(255,0,0) );
+    switch (iCargo) {
+        case 0:
+            circle    ( colorImg, Point(7+134+22, 61+116), 22, Scalar(255,0,0));
+            break;
+        case 1:
+            rectangle ( colorImg, Point(7+89,61+116), Point(7+89+63,61+116+36), Scalar(255,0,0) );
+            break;
+        case 2:
+            vector<Point> contour;
+            contour.push_back (Point(7+89,61+116+36));
+            contour.push_back (Point(7+89+63,61+116));
+            contour.push_back (Point(7+89+63,61+116+36));
+
+            const Point * pts = (const Point *) Mat(contour).data;
+            int nPts = Mat(contour).rows;
+            //Point myPt[3] = { Point(7+89,61+116+36),Point(7+89+63,61+116),Point(7+89+63,61+116+36) };
+            //int nVortex[3] = {0, 1, 2};
+            polylines ( colorImg, &pts, &nPts, 1, true, Scalar(255,0,0));
+            break;
+    }
 }
 
 static void* video_stream_THREAD ( void *threadid ) {
@@ -222,7 +243,7 @@ static void* video_stream_THREAD ( void *threadid ) {
 
         /* draw digital arena if needed */
         if ( fArena )
-            draw_digital_arena ( &myVision.colorImg );
+            myVision.draw_digital_arena ();
 
         while (copyLock);
         copyLock = 1;

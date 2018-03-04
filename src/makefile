@@ -20,7 +20,7 @@ $(ODIR)/%.o: %.cpp $(DEPS)
 	$(CC) -c $(GTKFLAGS) -o $@ $< $(GTKLIBS) $(CFLAGS) $(LIBS)
 
 main: $(OBJ) lib826_64.a
-	$(CC) $(GTKFLAGS) -o $@ $^ $(GTKLIBS) $(CFLAGS) $(LIBS) -L./ -l826_64
+	$(CC) $(GTKFLAGS) -o $@ $^ $(GTKLIBS) $(CFLAGS) $(LIBS) #-L./ -l826_64
 
 .PHONY: clean
 
