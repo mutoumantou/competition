@@ -346,3 +346,7 @@ void on_rB_3_toggled (GtkToggleButton *togglebutton, gpointer data) {
         printf("cargo selected to triangle\n");
     }
 }
+
+int get_cargo_type (void) {
+    return iCargo;
+}

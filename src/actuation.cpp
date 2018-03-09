@@ -9,7 +9,6 @@ static float periodTime = 1.0 / freq;   // time taken per period
 static float ampXY = 1.0;             //field amplitude in XY plane in voltage
 static float tiltAngle = 45.0;      // tilting angle
 static float ampZ  = ampXY * tand(tiltAngle);
-static int iCargoType = 1;                         // 0: rectangle; 1: circle
 
 /* send signal to amplifiers */
 #define Coil_PX 0
@@ -224,7 +223,7 @@ int MMC_Controller :: check_contact (void) {
 static void* actuation_THREAD ( void *threadid ) {
     printf("at the start of actuation_THREAD.\n");
     int initFlag = s826_init();           // init. s826 board
-    printf("init result %d\n", initFlag); // result should be 0
+    printf("s826 board init. result: %d\n", initFlag); // result should be 0
 
     /* variable definition */
     Coil_System coil;                     // get an instance of coil system (class)
@@ -243,6 +242,9 @@ static void* actuation_THREAD ( void *threadid ) {
     int wayPoint_y[3] = {150, 150, 240};
     int iWaypoint = 0;
     int fCargoMove = 0;                 // whether or not robot has successfully moved cargo
+
+    int iCargo = get_cargo_type ();         // get cargo type specified on GUI, vision.cpp
+
     while (fThread) {
         presentTime = get_present_time ();          // get present time
         timeElapsed = presentTime - startTime;      // calc. how much time has passed
@@ -259,16 +261,18 @@ static void* actuation_THREAD ( void *threadid ) {
         switch (ctr.state) {
             case 0:                     // moving to cargo state
                 if (rst) {               // if cargo detection is valid ...
-                    if (iCargoType == 0)
+                    if (iCargo != 0) {        // if cargo not circle
                         ctr.update_goal_info_using_cargo_pos();
-                    else
-                        ctr.set_cargo_as_goal ();
-                    coil.set_angle ( ctr.angle );       // set moving angle to coil
-                    coil.rotate_to_new_angle ();
+                        coil.set_angle ( ctr.angle );       // set moving angle to coil
+                        coil.rotate_to_new_angle ();
 
-                    if (ctr.dis < 40) {                   // if reaching the goal
+                        if (ctr.dis < 40) {                   // if reaching the goal
+                            ctr.state = 1;
+                            printf("reach state 1.\n");
+                        }
+                    } else {
                         ctr.state = 1;
-                        printf("reach state 1.\n");
+                        printf("circle cargo skip state 1.\n");
                     }
                 } else {
                     // in this state, just igore abnormal detection
