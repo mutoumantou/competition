@@ -16,11 +16,13 @@ static float robotAngle = 0, cargoAngle = 0;                            // cargo
 static int fRobotAngle = 0, fCargoAngle = 0;
 
 /* define the method for sorting contours */
+
 static bool compareContourArea (std::vector<Point> contour1, std::vector<Point> contour2) {
     double i = fabs ( contourArea (contour1, false) );
     double j = fabs ( contourArea (contour2, false) );
     return (i < j);
 }
+
 
 /* class definition */
 class Vision_Master {
@@ -31,6 +33,9 @@ class Vision_Master {
         std::vector<std::vector<Point> > contours;
         std::vector<Vec4i> hierarchy;
         RotatedRect boundingRect1, boundingRect2;
+        /// parameter used when cargo is circle
+        Point2f circleCenter;
+        float circleRadius;
     public:
         Mat colorImg;
         int nContours;
@@ -49,9 +54,11 @@ class Vision_Master {
 
 /* get the latest frame */
 void Vision_Master :: get_latest_frame (void) {
+
     if ( fSim ) {                            // If for testing
-        Mat whatever = imread("4.png", IMREAD_GRAYSCALE );
-        whatever.copyTo ( grayImg );
+        //Mat whatever = imread("4.png", IMREAD_GRAYSCALE );        // (on workstation) cause GTK+ 2.x symbols detected. Using GTK+ 2.x and GTK+ 3 in the same process is not supported
+
+        //whatever.copyTo ( grayImg );
     } else {                                 // if for real experiments
         unsigned char *inImage;
         //printf("before grab\n");
@@ -64,6 +71,7 @@ void Vision_Master :: get_latest_frame (void) {
         Mat img_m = Mat(480, 640, CV_8UC1, inImage);
         img_m.copyTo (grayImg);
     }
+
 }
 
 void Vision_Master :: convert_to_binary (void) {
@@ -75,25 +83,38 @@ void Vision_Master :: convert_to_color (void) {
 }
 
 void Vision_Master :: find_contours (void) {
+
     findContours ( binaryImg, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
     nContours = contours.size();
     if (nContours < 1)
         printf("Error: find no contours.\n");
+
 }
 
 void Vision_Master :: sort_contours (void) {
+
     sort ( contours.begin(), contours.end(), compareContourArea );
     if (nContours >= 1)
         sortedContour1 = contours[nContours-1];
     if (nContours >= 2)
         sortedContour2 = contours[nContours-2];
+
 }
 
 void Vision_Master :: get_bounding_rect (void) {
     if (nContours >= 1)
         boundingRect1 = minAreaRect( Mat( sortedContour1 ) );
-    if (nContours >= 2)
-        boundingRect2 = minAreaRect( Mat( sortedContour2 ) );
+    if (nContours >= 2) {
+        switch (iCargo) {
+            case 0:
+                minEnclosingCircle ( Mat( sortedContour2 ), circleCenter, circleRadius);
+                break;
+            case 1:
+            case 2:
+                boundingRect2 = minAreaRect( Mat( sortedContour2 ) );
+        }
+    }
+
 }
 
 void Vision_Master :: update_robot_and_cargo_pos (void) {
@@ -113,8 +134,13 @@ void Vision_Master :: update_robot_and_cargo_pos (void) {
         } else {
             while (fCargoPos);
             fCargoPos = 1;
-            cargoPos.x = boundingRect2.center.x;
-            cargoPos.y = boundingRect2.center.y;
+            if (iCargo == 0) {                  // when cargo is a circle
+                cargoPos.x = circleCenter.x;
+                cargoPos.y = circleCenter.y;
+            } else {
+                cargoPos.x = boundingRect2.center.x;
+                cargoPos.y = boundingRect2.center.y;
+            }
             fCargoPos = 0;
         }
     }
@@ -130,10 +156,14 @@ void Vision_Master :: draw_detection (void) {
         }
     }
     if (nContours >= 2) {
-        Point2f rect_points[4];
-        boundingRect2.points( rect_points );
-        for (int i = 0; i < 4; i ++) {
-            line( colorImg, rect_points[i], rect_points[(i+1)%4], Scalar(255,0,0), 1, 8 );
+        if (iCargo == 0) {
+            circle ( colorImg, circleCenter, circleRadius, Scalar(255,255,255));
+        } else {
+            Point2f rect_points[4];
+            boundingRect2.points( rect_points );
+            for (int i = 0; i < 4; i ++) {
+                line( colorImg, rect_points[i], rect_points[(i+1)%4], Scalar(255,0,0), 1, 8 );
+            }
         }
     }
 }
@@ -201,9 +231,11 @@ void Vision_Master :: draw_digital_arena ( void ) {
     rectangle ( colorImg, Point(311,177), Point(320,240), Scalar(255,0,0) );     // length: 50 um; height: 350 um
     line      ( colorImg, Point(  0, 52), Point(639, 52), Scalar(255,0,0) );
     line      ( colorImg, Point(  0,427), Point(639,427), Scalar(255,0,0) );
+
     switch (iCargo) {
         case 0:
-            circle    ( colorImg, Point(7+134+22, 61+116), 22, Scalar(255,0,0));
+            //circle    ( colorImg, Point(7+134+22, 61+116), 22, Scalar(255,0,0));
+            circle    ( colorImg, Point(163, 177), 22, Scalar(255,0,0));
             break;
         case 1:
             rectangle ( colorImg, Point(7+89,61+116), Point(7+89+63,61+116+36), Scalar(255,0,0) );
@@ -221,19 +253,25 @@ void Vision_Master :: draw_digital_arena ( void ) {
             polylines ( colorImg, &pts, &nPts, 1, true, Scalar(255,0,0));
             break;
     }
+
 }
 
 static void* video_stream_THREAD ( void *threadid ) {
     printf("at the start of video_stream_THREAD.\n");
+
     Vision_Master myVision;
 
+    //int i = 0;
+
     while ( fThread ) {
+        //printf("earlier in loop %d ", i);
         myVision.get_latest_frame();
         myVision.convert_to_binary();
         myVision.convert_to_color();
 
         myVision.find_contours ();
         myVision.sort_contours ();
+
 
         myVision.get_bounding_rect ();
 
@@ -242,6 +280,7 @@ static void* video_stream_THREAD ( void *threadid ) {
         myVision.update_robot_and_cargo_angle ();
 
         /* draw digital arena if needed */
+
         if ( fArena )
             myVision.draw_digital_arena ();
 
@@ -249,7 +288,9 @@ static void* video_stream_THREAD ( void *threadid ) {
         copyLock = 1;
         myVision.colorImg.copyTo(frameForDisplay);
         copyLock = 0;
+
         my_sleep(30);           // correspond to 30 Hz camera rate
+        //printf("later in loop %d\n", i++);
     }
 
     if (!fSim) {
@@ -258,6 +299,7 @@ static void* video_stream_THREAD ( void *threadid ) {
     	cam.deinitialize();
         cam.deinitialize();
     }
+
     printf("at the end of video_stream_THREAD.\n");
 }
 

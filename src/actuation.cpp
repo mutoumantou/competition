@@ -238,8 +238,8 @@ static void* actuation_THREAD ( void *threadid ) {
     float dis2 = 0.0;                   // distance from robot to destination
     float contactPos[2] = {0,0};        // position when contact happens
 
-    int wayPoint_x[3] = {500, 160, 160};
-    int wayPoint_y[3] = {150, 150, 240};
+    int wayPoint_x[3] = {500, 160, 163};
+    int wayPoint_y[3] = {150, 150, 480-177};
     int iWaypoint = 0;
     int fCargoMove = 0;                 // whether or not robot has successfully moved cargo
 
@@ -308,8 +308,11 @@ static void* actuation_THREAD ( void *threadid ) {
                 }
                 break;
             case 3:
-                if (iWaypoint > 2)
+                if (iWaypoint > 2) {
                     fThread = 0;
+                    break;
+                }
+
                 movingAngle = atan2(wayPoint_y[iWaypoint] - ctr.robot.y, wayPoint_x[iWaypoint] - ctr.robot.x) * 180.0 / M_PI;
                 printf("waypoint (%d, %d), robot (%d, %d), angle %.3f\n", wayPoint_x[iWaypoint], wayPoint_y[iWaypoint],ctr.robot.x, ctr.robot.y, movingAngle);
                 coil.set_angle ( movingAngle );
@@ -325,23 +328,26 @@ static void* actuation_THREAD ( void *threadid ) {
 
         //printf("time: %.3f\n", timeElapsed);
         /* calc. field in x-y directions */
-        if (fKey) {
-            if (directionCode == -1) {
-              coil.stop_output ();
-            } else {
-              coil.set_angle (directionCode * 90.0);
-              coil.rotate_to_new_angle ();
+        if (fThread) {
+            if (fKey) {
+                if (directionCode == -1) {
+                  coil.stop_output ();
+                } else {
+                  coil.set_angle (directionCode * 90.0);
+                  coil.rotate_to_new_angle ();
+                }
+                fKey = 0;                   // reset key flag
             }
-            fKey = 0;                   // reset key flag
+
+            /* decide z field amplitude based on time */
+            if (directionCode != -1) {
+              zOutput = -1.0 * ampZ * timeElapsed / periodTime;         // make the object tail tilt up
+              coil.set_z_field_volt ( zOutput );
+            }
+            coil.output_signal ();
+            my_sleep(10);
         }
 
-        /* decide z field amplitude based on time */
-        if (directionCode != -1) {
-          zOutput = -1.0 * ampZ * timeElapsed / periodTime;         // make the object tail tilt up
-          coil.set_z_field_volt ( zOutput );
-        }
-        coil.output_signal ();
-        my_sleep(10);
     }
     coil.stop_output();
     s826_close();
@@ -389,6 +395,7 @@ void on_spin_amp_changed  (GtkEditable *editable, gpointer user_data) {
 /* change tilting angle in degrees */
 void on_spin_tiltingAngle_changed (GtkEditable *editable, gpointer user_data) {
     tiltAngle = gtk_spin_button_get_value ( GTK_SPIN_BUTTON(editable) );
+    ampZ  = ampXY * tand(tiltAngle);
 }
 
 void on_toggle_gradient_toggled (GtkToggleButton *togglebutton, gpointer data) {
