@@ -204,8 +204,7 @@ void MMC_Controller :: set_cargo_as_goal (void) {
     goal.y = cargo.y;
     dis    = sqrt  ( pow ( goal.x - robot.x, 2 ) + pow ( goal.y - robot.y, 2 ) );
     angle  = atan2 ( goal.y - robot.y, goal.x - robot.x) * 180.0 / M_PI;
-    printf("cargo (%d, %d)\n", cargo.x, cargo.y);
-
+    printf("cargo (%d, %d) dis %.3f, angle %.3f\n", cargo.x, cargo.y, dis, angle);
 }
 
 /*
@@ -213,7 +212,7 @@ output: 1: contact happens; 0: contact not happen
 this fun. is only called when cargo is not correctly detected
 */
 int MMC_Controller :: check_contact (void) {
-  if (dis < 30)           // if pre. distance is < threshold, then contact happened
+  if (dis < 60)           // if pre. distance is < threshold, then contact happened
     fContact = 1;
                           // else, just a wrong detection, ignore this detection
   return fContact;
@@ -237,6 +236,8 @@ static void* actuation_THREAD ( void *threadid ) {
 
     float dis2 = 0.0;                   // distance from robot to destination
     float contactPos[2] = {0,0};        // position when contact happens
+    float contactTime = 0.0;            // time when contact happens
+    int nSwitch = 0;                    // no. of switch in order to push cargo from stuck
 
     int wayPoint_x[3] = {500, 160, 163};
     int wayPoint_y[3] = {150, 150, 480-177};
@@ -259,7 +260,8 @@ static void* actuation_THREAD ( void *threadid ) {
         //printf("robot (%d, %d), cargo (%d, %d)\n", robotPos.x, robotPos.y, cargoPos.x, cargoPos.y);
 
         switch (ctr.state) {
-            case 0:                     // moving to cargo state
+            /* Step: move robot to cargo */
+            case 0:
                 if (rst) {               // if cargo detection is valid ...
                     if (iCargo != 0) {        // if cargo not circle
                         ctr.update_goal_info_using_cargo_pos();
@@ -278,35 +280,55 @@ static void* actuation_THREAD ( void *threadid ) {
                     // in this state, just igore abnormal detection
                 }
                 break;
-            case 1:                     // align state
+            /* Step: align robot with cargo's orientation */
+            case 1:
                 ctr.set_cargo_as_goal ();
                 coil.set_angle ( ctr.angle );       // set moving angle to coil
                 coil.rotate_to_new_angle ();
                 ctr.state = 2;
                 printf("reach state 2.\n");
                 break;
+            /* Step: contact cargo */
             case 2:
-                if ( ! ctr.fContact ) {                 // if contact has not happended ...
+                if ( ! ctr.fContact ) {       // if contact has not happended ...
+                    printf("robot has NOT touched cargo.\n");
                     if ( rst ) {                            // if cargo detection is valid ...
+                        printf("cargo detection is valid.\n");
                         ctr.set_cargo_as_goal ();
                         coil.set_angle ( ctr.angle );       // set moving angle to coil
                         coil.rotate_to_new_angle ();
                     } else {                        // if cargo detection is not valid ...
+                        printf("cargo detection is invalid.\n");
                         rst = ctr.check_contact ();     // check if contact happened
                         if (rst) {                      // if robot has contacted cargo ...
                             contactPos[0] = ctr.robot.x;  // record the robot position when contact happens
                             contactPos[1] = ctr.robot.y;
+                            contactTime = presentTime;
                             printf("robot has touched cargo.\n");
                         }                               // otherwise just igore this detection
                     }
                 } else {                      // if contact has happened
-                    float tempDis = sqrt  ( pow ( ctr.robot.x - contactPos[0], 2 ) + pow ( ctr.robot.y - contactPos[1], 2 ) );
+                    float tempDis = sqrt  (   pow ( ctr.robot.x - contactPos[0], 2 )
+                                            + pow ( ctr.robot.y - contactPos[1], 2 ) ); // dis. between current pos. and contact pos.
+                    printf("dis. between current pos. and contact pos. %.3f.\n", tempDis);
                     if (tempDis > 30) {
                         ctr.state = 3;
                         printf("reach state 3.\n");
+                    } else {
+                        if ( ( (int)(presentTime - contactTime) ) > nSwitch * 2 ) {
+                            nSwitch ++;
+                            if ( nSwitch / 2 % 2 == 0 ) {
+                                coil.set_angle ( ctr.angle + 30 );       // set moving angle to coil
+
+                            } else {
+                                coil.set_angle ( ctr.angle - 30 );       // set moving angle to coil
+                            }
+                            coil.rotate_to_new_angle ();
+                        }
                     }
                 }
                 break;
+            /* Step: pass waypoints */
             case 3:
                 if (iWaypoint > 2) {
                     fThread = 0;
