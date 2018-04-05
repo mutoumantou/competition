@@ -10,236 +10,6 @@ static float ampXY = 1.0;             //field amplitude in XY plane in voltage
 static float tiltAngle = 45.0;      // tilting angle
 static float ampZ  = ampXY * tand(tiltAngle);
 
-/* send signal to amplifiers */
-#define Coil_PX 0
-#define Coil_NX 3
-#define Coil_PY 4
-#define Coil_NY 1
-#define Coil_PZ 2
-#define Coil_NZ 5
-
-/* class definition */
-/* constructor */
-Coil_System :: Coil_System ( void ) {
-    for (int i = 0; i < 3; i ++) {
-        uniformV[i] = 0;
-    }
-    angle = 0;
-    angleOld = 0;
-    fGradient = 0;
-    /* ensure robot is init. aligned with +x */
-    for (int i = 0; i < 10; i ++) {
-        uniformV[0] = 1 * ampXY * i * 0.1;
-        output_signal ();
-        my_sleep(50);
-    }
-    //uniformV[0] = 0;
-    //output_signal ();
-}
-
-void Coil_System :: set_uniform_field_volt ( float data[3] ) {
-    for (int i = 0; i < 3; i ++) {
-        uniformV[i] = data[i];
-    }
-}
-
-/* set the z field strength to tilt robot */
-void Coil_System :: set_z_field_volt (float data) {
-    uniformV[2] = data;
-}
-
-void Coil_System :: output_signal ( void ) {
-    if (!fGradient) {
-        s826_aoPin(Coil_PZ, 2, uniformV[2]);     // output z first so that when clearing field the robot will not stand up
-        s826_aoPin(Coil_NZ, 2, uniformV[2]);
-
-        s826_aoPin(Coil_PX, 2, uniformV[0]);
-        s826_aoPin(Coil_NX, 2, uniformV[0]);
-        s826_aoPin(Coil_PY, 2, uniformV[1]);
-        s826_aoPin(Coil_NY, 2, uniformV[1]);
-
-    } else {
-        if (uniformV[2] >= 0) {
-            s826_aoPin(Coil_PZ, 2, uniformV[2]);
-            s826_aoPin(Coil_NZ, 2, 0);
-        } else {
-            s826_aoPin(Coil_PZ, 2, 0);
-            s826_aoPin(Coil_NZ, 2, uniformV[2]);
-        }
-
-        if (uniformV[0] >= 0) {
-            s826_aoPin(Coil_PX, 2, uniformV[0]);
-            s826_aoPin(Coil_NX, 2, 0);
-        } else {
-            s826_aoPin(Coil_PX, 2, 0);
-            s826_aoPin(Coil_NX, 2, uniformV[0]);
-        }
-
-        if (uniformV[1] >= 0) {
-            s826_aoPin(Coil_PY, 2, uniformV[1]);
-            s826_aoPin(Coil_NY, 2, 0);
-        } else {
-            s826_aoPin(Coil_PY, 2, 0);
-            s826_aoPin(Coil_NY, 2, uniformV[1]);
-        }
-    }
-
-    //printf("output %.3f %.3f %.3f %.3f %.3f %.3f.\n", outputV[0], outputV[1], outputV[2],outputV[3], outputV[4], outputV[5]);
-    fGradient = 0;
-}
-
-void Coil_System :: set_angle (float data) {
-    angleOld = angle;           // remember the last angle
-    angle = data;
-}
-
-void Coil_System :: rotate_to_new_angle ( void ) {
-    // angle is in range of [0, 360)
-    float del = angle - angleOld;
-    if (del > 180)
-        del = del - 360;
-    if (del < -180)
-        del = del + 360;
-
-    int step = 1;
-    if (del < 0)
-        step = -1;
-
-    /* gently rotate robot */
-    uniformV[2] = 0;
-    fGradient = 1;
-    for (int i = 0; i < abs(del); i ++) {
-        angleOld = angleOld + step;
-        uniformV[0] = cosd(angleOld) * ampXY;
-        uniformV[1] = sind(angleOld) * ampXY;
-        uniformV[2] = 0.0;
-        output_signal ();
-        my_sleep(10);
-    }
-    fGradient = 0;
-    angleOld = angle;
-}
-
-void Coil_System :: stop_output (void) {
-    for (int i = 0; i < 3; i ++) {
-        uniformV[i] = 0;
-    }
-    angle = 0;
-    angleOld = 0;
-    output_signal ();
-}
-
-void Coil_System :: add_gradient_output (void) {
-    fGradient = 1;
-}
-
-/* define a class for the controller */
-class MMC_Controller {
-  public:
-    MMC_Controller (void);      // constructor
-    int get_latest_pos (int data);  // get latest position info from vision.cpp
-    int check_contact (int data);         // check if robot has touched cargo
-    float dis, angle;                 // distance from robot to cargo, desired moving angle
-    cv :: Point robot, cargo, goal;         // center point position of robot and cargo
-    float cargoAngle;                   // orientation of cargo
-    int fContact;
-    int state;                          // 0: move to cargo; 1: rotate; 2: grab cargo; 3: move to destination
-    void update_goal_info_using_cargo_pos (void);
-    void set_cargo_as_goal (void);
-    cv :: Point robotBeforeContact;     // position of robot before contact
-    int robot_away_from_init_pos (void);        // check if robot is away from the pos. where it is before contact. For cases that robot touches cargo then not touches it in following frames
-  private:
-    cv :: Point preRobot, preCargo;   // previous center point information of robot and cargo
-
-};
-
-MMC_Controller :: MMC_Controller () {
-  robot.x = 0;
-  robot.y = 0;
-  cargo.x = 0;
-  cargo.y = 0;
-  goal.x = 0; goal.y = 0;
-  cargoAngle = 0;
-  preRobot.x = 0;
-  preRobot.y = 0;
-  preCargo.x = 0;
-  preCargo.y = 0;
-  robotBeforeContact.x = 0;
-  robotBeforeContact.y = 0;
-  dis = 0.0; angle = 0.0;
-  fContact = 0;
-  state = 0;
-}
-
-/*
-output: 1: valid new position; 0: cargo pos not valid
-intput: 0: 1st run, use for preCargo and preRobot; 1: following runs
-robot pos. is considered to be always valid
-*/
-int MMC_Controller :: get_latest_pos (int data) {
-  if (data) {
-    return_center_pt_info ( &robot, &cargo, &cargoAngle );
-    preRobot.x = robot.x;
-    preRobot.y = robot.y;
-    if ( abs(cargo.x - preCargo.x) < 20 && abs(cargo.y - preCargo.y) < 20 ) {
-        preCargo.x = cargo.x;
-        preCargo.y = cargo.y;
-        robotBeforeContact.x = robot.x;         // update robotBeforeContact pos. only when cargo pos. is valid
-        robotBeforeContact.y = robot.y;
-        return 1;
-    } else {        // if cargo pos. is not valid, do not update dis.
-        cargo.x = preCargo.x;
-        cargo.y = preCargo.y;
-
-        return 0;
-    }
-  }
-  return_center_pt_info ( &preRobot, &preCargo, &cargoAngle );
-  return 1;
-}
-
-void MMC_Controller :: update_goal_info_using_cargo_pos (void) {
-    goal.x = cargo.x + 120 * cosd(cargoAngle);
-    goal.y = cargo.y + 120 * sind(cargoAngle);
-    printf("robot (%d, %d) cargo (%d, %d), goal (%d, %d)\n", robot.x, robot.y, cargo.x, cargo.y, goal.x, goal.y);
-    dis    = sqrt  ( pow ( goal.x - robot.x, 2 ) + pow ( goal.y - robot.y, 2 ) );
-    angle  = atan2 ( goal.y - robot.y, goal.x - robot.x) * 180.0 / M_PI;
-}
-
-void MMC_Controller :: set_cargo_as_goal (void) {
-    goal.x = cargo.x;
-    goal.y = cargo.y;
-    dis    = sqrt  ( pow ( goal.x - robot.x, 2 ) + pow ( goal.y - robot.y, 2 ) );
-    angle  = atan2 ( goal.y - robot.y, goal.x - robot.x) * 180.0 / M_PI;
-    printf("cargo (%d, %d) dis %.3f, angle %.3f\n", cargo.x, cargo.y, dis, angle);
-}
-
-/*
-output: 1: contact happens; 0: contact not happen
-this fun. is only called when cargo is not correctly detected
-*/
-int MMC_Controller :: check_contact (int data) {
-    int dis_threshold = 60;             // threshold for decide contact
-    switch (data) {
-        case 0: dis_threshold = 60; break;
-        case 1: dis_threshold = 70; break;
-        case 2: dis_threshold = 70; break;
-    }
-  if (dis < dis_threshold)           // if pre. distance is < threshold, then contact happened
-    fContact = 1;
-                          // else, just a wrong detection, ignore this detection
-  return fContact;
-}
-
-int MMC_Controller :: robot_away_from_init_pos (void) {
-    float dis = sqrt  ( pow ( robotBeforeContact.x - robot.x, 2 ) + pow ( robotBeforeContact.y - robot.y, 2 ) );
-    printf("robot dis. to its pos. before contact is %.3f\n", dis);
-    if ( dis > 30 )
-        return 1;
-    else
-        return 0;
-}
-
 /* thread of actuation */
 static void* actuation_THREAD ( void *threadid ) {
     printf("at the start of actuation_THREAD.\n");
@@ -270,7 +40,7 @@ static void* actuation_THREAD ( void *threadid ) {
 
     while (fThread) {
         presentTime = get_present_time ();          // get present time
-        printf("present time: %.3f.\n", presentTime);
+        //printf("present time: %.3f.\n", presentTime);
         timeElapsed = presentTime - startTime;      // calc. how much time has passed
         if (timeElapsed >= periodTime) {
             while (timeElapsed >= periodTime) {
@@ -308,6 +78,11 @@ static void* actuation_THREAD ( void *threadid ) {
                 ctr.set_cargo_as_goal ();
                 coil.set_angle ( ctr.angle );       // set moving angle to coil
                 coil.rotate_to_new_angle ();
+
+                /* check the alignment between robot and cargo */
+                rst = ctr.get_latest_pos (1);           // get robot and cargo position after rotation
+                my_sleep (1000);                        // wait for user to review terminal output
+
                 ctr.state = 2;
                 printf("reach state 2.\n");
                 break;

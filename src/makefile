@@ -10,10 +10,10 @@ LDIR = ../lib
 
 LIBS = -lm -ldc1394 #-l826_64
 
-_DEPS = GUI_master.hpp general_header.hpp vision.hpp FWcamera.hpp actuation.hpp keyboard.hpp s826.hpp s826api.h
+_DEPS = GUI_master.hpp general_header.hpp vision.hpp FWcamera.hpp actuation.hpp keyboard.hpp s826.hpp s826api.h coil.hpp controller.hpp
 DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
 
-_OBJ = main.o GUI_master.o vision.o FWcamera.o general_fun.o actuation.o keyboard.o s826.o
+_OBJ = main.o GUI_master.o vision.o FWcamera.o general_fun.o actuation.o keyboard.o s826.o coil.o controller.o
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
 $(ODIR)/%.o: %.cpp $(DEPS)
