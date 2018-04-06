@@ -13,6 +13,7 @@ MMC_Controller :: MMC_Controller () {
     dis = 0.0; angle = 0.0;
     fContact = 0;
     state = 0;
+    angleDiff = 0.0;            // the angle difference between (robot - cargo) and (cargo heading)
 }
 
 /*
@@ -42,6 +43,7 @@ int MMC_Controller :: get_latest_pos (int data) {
   return 1;
 }
 
+/* set the goal of controller to be the detected cargo position */
 void MMC_Controller :: update_goal_info_using_cargo_pos (void) {
     goal.x = cargo.x + 120 * cosd(cargoAngle);
     goal.y = cargo.y + 120 * sind(cargoAngle);
@@ -50,6 +52,7 @@ void MMC_Controller :: update_goal_info_using_cargo_pos (void) {
     angle  = atan2 ( goal.y - robot.y, goal.x - robot.x) * 180.0 / M_PI;
 }
 
+/* set the detected cargo position as the goal position of the controller */
 void MMC_Controller :: set_cargo_as_goal (void) {
     goal.x = cargo.x;
     goal.y = cargo.y;
@@ -82,4 +85,12 @@ int MMC_Controller :: robot_away_from_init_pos (void) {
         return 1;
     else
         return 0;
+}
+
+/* calc. the angle difference between (robot - cargo) and (cargo heading) */
+void MMC_Controller :: calc_angle_difference_to_desired_line (void) {
+    float x = robot.x - cargo.x;
+    float y = robot.y - cargo.y;
+    float angleRobotCargo = atan2(y, x) * 180 / M_PI;               // angle from cargo pointing to robot
+    angleDiff = calc_angle_difference (cargoAngle, angleRobotCargo);     // general fun.
 }

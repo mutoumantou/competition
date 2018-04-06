@@ -7,7 +7,8 @@
 
 /* define a class for the controller */
 class MMC_Controller {
-  public:
+    public:
+      float angleDiff;        // the angle difference between (robot - cargo) and (cargo heading)
     MMC_Controller (void);      // constructor
     int get_latest_pos (int data);  // get latest position info from vision.cpp
     int check_contact (int data);         // check if robot has touched cargo
@@ -20,8 +21,10 @@ class MMC_Controller {
     void set_cargo_as_goal (void);
     cv :: Point robotBeforeContact;     // position of robot before contact
     int robot_away_from_init_pos (void);        // check if robot is away from the pos. where it is before contact. For cases that robot touches cargo then not touches it in following frames
-  private:
-    cv :: Point preRobot, preCargo;   // previous center point information of robot and cargo
+        void calc_angle_difference_to_desired_line (void);  // calc. the angle difference between (robot - cargo) and (cargo heading)
+
+    private:
+        cv :: Point preRobot, preCargo;   // previous center point information of robot and cargo
 };
 
 #endif

@@ -16,4 +16,7 @@
 
 void my_sleep (unsigned msec);          // sleep
 double get_present_time (void);
+/* calc. difference between two angles in angles (+: counterclockwise rotationg; -: clockwise rotation)*/
+float calc_angle_difference (float angle1, float angle2);
+
 #endif

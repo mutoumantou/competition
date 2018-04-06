@@ -26,3 +26,13 @@ double get_present_time (void) {
     double returnVal = (double) presentTime.tv_sec + presentTime.tv_usec * 1e-6;        // second
     return returnVal;
 }
+
+/* calc. difference between two angles in angles (+: counterclockwise rotationg; -: clockwise rotation)*/
+float calc_angle_difference (float angle1, float angle2) {
+    float dif = angle2 - angle1;
+    while (dif > 180)
+        dif -= 360;
+    while (dif <= -180)
+        dif += 360;
+    return dif;
+}
