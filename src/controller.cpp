@@ -24,7 +24,7 @@ robot pos. is considered to be always valid
 int MMC_Controller :: get_latest_pos (int data) {
   if (data) {
     return_center_pt_info ( &robot, &cargo, &cargoAngle );
-    printf("robot (%d, %d) cargo (%d, %d), cargoAngle %.3f\n", robot.x, robot.y, cargo.x, cargo.y, cargoAngle);
+    //printf("robot (%d, %d) cargo (%d, %d), cargoAngle %.3f\n", robot.x, robot.y, cargo.x, cargo.y, cargoAngle);
     preRobot.x = robot.x;
     preRobot.y = robot.y;
     if ( abs(cargo.x - preCargo.x) < 20 && abs(cargo.y - preCargo.y) < 20 ) {
@@ -45,9 +45,9 @@ int MMC_Controller :: get_latest_pos (int data) {
 
 /* set the goal of controller to be the detected cargo position */
 void MMC_Controller :: update_goal_info_using_cargo_pos (void) {
-    goal.x = cargo.x + 120 * cosd(cargoAngle);
-    goal.y = cargo.y + 120 * sind(cargoAngle);
-    printf("robot (%d, %d) cargo (%d, %d), goal (%d, %d)\n", robot.x, robot.y, cargo.x, cargo.y, goal.x, goal.y);
+    goal.x = cargo.x + 100 * cosd(cargoAngle);
+    goal.y = cargo.y + 100 * sind(cargoAngle);
+    //printf("robot (%d, %d) cargo (%d, %d), goal (%d, %d)\n", robot.x, robot.y, cargo.x, cargo.y, goal.x, goal.y);
     dis    = sqrt  ( pow ( goal.x - robot.x, 2 ) + pow ( goal.y - robot.y, 2 ) );
     angle  = atan2 ( goal.y - robot.y, goal.x - robot.x) * 180.0 / M_PI;
 }
@@ -68,8 +68,8 @@ this fun. is only called when cargo is not correctly detected
 int MMC_Controller :: check_contact (int data) {
     int dis_threshold = 60;             // threshold for decide contact
     switch (data) {
-        case 0: dis_threshold = 60; break;
-        case 1: dis_threshold = 70; break;
+        case 0: dis_threshold = 60; break;              // circular cargo
+        case 1: dis_threshold = 76; break;              // rectangular cargo
         case 2: dis_threshold = 70; break;
     }
   if (dis < dis_threshold)           // if pre. distance is < threshold, then contact happened
@@ -93,4 +93,5 @@ void MMC_Controller :: calc_angle_difference_to_desired_line (void) {
     float y = robot.y - cargo.y;
     float angleRobotCargo = atan2(y, x) * 180 / M_PI;               // angle from cargo pointing to robot
     angleDiff = calc_angle_difference (cargoAngle, angleRobotCargo);     // general fun.
+    printf("angle diff. is %.3f\n", angleDiff);
 }

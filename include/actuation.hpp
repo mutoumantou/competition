@@ -9,8 +9,6 @@
 
 extern "C" {
     void on_tB_actuation_toggled (GtkToggleButton *togglebutton, gpointer data);
-    
-    void on_toggle_gradient_toggled (GtkToggleButton *togglebutton, gpointer data);
 }
 
 /* function declaration */
