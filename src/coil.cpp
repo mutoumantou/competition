@@ -103,7 +103,7 @@ void Coil_System :: rotate_to_new_angle ( void ) {
     if (del < -180)
         del = del + 360;
 
-    printf("in rotate_to_new_angle, del %.3f angle %.3f angleOld %.3f\n", del, angle, angleOld);
+    //printf("in rotate_to_new_angle, del %.3f angle %.3f angleOld %.3f\n", del, angle, angleOld);
     int step = 1;
     if (del < 0)
         step = -1;
@@ -194,7 +194,7 @@ static void* coil_THREAD ( void *threadid ) {
             /* move to new angle */
             myCoil.set_angle ( newDirAngle );       // set moving angle to coil
             myCoil.rotate_to_new_angle ();
-            printf("rotate to angle %.3f\n", newDirAngle);
+            //printf("rotate to angle %.3f\n", newDirAngle);
             fDirChange = 0;
         } else {
             if ( !fPause ) {
@@ -252,4 +252,16 @@ void on_toggle_gradient_toggled (GtkToggleButton *togglebutton, gpointer data) {
 
 void pause_coil_output (int data) {
     fPause = data;
+}
+
+void switch_to_gradient_mode (void) {
+    fGradient = 1;
+    tiltAngle = 5;
+    ampZ  = ampXY * tand(tiltAngle);
+}
+
+void switch_to_uniform_mode (void) {
+    fGradient = 0;
+    tiltAngle = 45;
+    ampZ  = ampXY * tand(tiltAngle);
 }

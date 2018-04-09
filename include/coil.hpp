@@ -35,6 +35,9 @@ void change_moving_dir (int data);
 
 void pause_coil_output (int data);
 
+void switch_to_gradient_mode (void);
+void switch_to_uniform_mode (void);
+
 class Coil_System {
     public:
         Coil_System ( void );

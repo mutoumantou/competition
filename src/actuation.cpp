@@ -308,12 +308,14 @@ static void* actuationRectRobot_THREAD ( void *threadid ) {
                         }                               // otherwise just igore this detection
                     }
                 } else {                      // if contact has happened
+                    switch_to_gradient_mode ();         // coil.cpp
                     float tempDis = sqrt  (   pow ( ctr.robot.x - contactPos[0], 2 )
                                             + pow ( ctr.robot.y - contactPos[1], 2 ) ); // dis. between current pos. and contact pos.
                     printf("dis. between current pos. and contact pos. %.3f.\n", tempDis);
                     if ( (tempDis > 30) && (ctr.robot_away_from_init_pos()) ) {
                         ctr.state = 3;
                         printf("reach state 3.\n");
+                        switch_to_uniform_mode ();         // coil.cpp
                     } else {
                         if ( ( (int)(presentTime - contactTime) ) > nSwitch * 2 ) {
                             nSwitch ++;
@@ -334,7 +336,7 @@ static void* actuationRectRobot_THREAD ( void *threadid ) {
                 }
 
                 movingAngle = atan2(wayPoint_y[iWaypoint] - ctr.robot.y, wayPoint_x[iWaypoint] - ctr.robot.x) * 180.0 / M_PI;
-                //printf("waypoint (%d, %d), robot (%d, %d), angle %.3f\n", wayPoint_x[iWaypoint], wayPoint_y[iWaypoint],ctr.robot.x, ctr.robot.y, movingAngle);
+                printf("waypoint (%d, %d), robot (%d, %d), angle %.3f\n", wayPoint_x[iWaypoint], wayPoint_y[iWaypoint],ctr.robot.x, ctr.robot.y, movingAngle);
                 change_moving_angle (  movingAngle );
 
                 dis2 = sqrt ( pow ( wayPoint_x[iWaypoint] - ctr.robot.x, 2 ) + pow ( wayPoint_y[iWaypoint] - ctr.robot.y, 2 ) );

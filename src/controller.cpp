@@ -55,9 +55,10 @@ void MMC_Controller :: update_goal_info_using_cargo_pos (void) {
 /* set the goal of controller to be above detected cargo position */
 void MMC_Controller :: update_goal_info_using_cargo_pos_for_rect_robot (void) {
     goal.x = cargo.x;
-    goal.y = cargo.y + 150;
+    goal.y = cargo.y + 100;
     dis    = sqrt  ( pow ( goal.x - robot.x, 2 ) + pow ( goal.y - robot.y, 2 ) );
     angle  = atan2 ( goal.y - robot.y, goal.x - robot.x) * 180.0 / M_PI;
+    printf("goal (%d, %d), dis %.3f, angle %.3f\n", goal.x, goal.y, dis, angle);
 }
 
 /* set the detected cargo position as the goal position of the controller */
