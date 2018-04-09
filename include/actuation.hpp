@@ -8,7 +8,8 @@
 #include "coil.hpp"
 
 extern "C" {
-    void on_tB_actuation_toggled (GtkToggleButton *togglebutton, gpointer data);
+    void on_tB_actuation_toggled        (GtkToggleButton *togglebutton, gpointer data);
+    void on_tB_rectangularRobot_toggled (GtkToggleButton *togglebutton, gpointer data);
 }
 
 /* function declaration */
