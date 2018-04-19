@@ -30,8 +30,12 @@ int MMC_Controller :: get_latest_pos (int data) {
     if ( abs(cargo.x - preCargo.x) < 20 && abs(cargo.y - preCargo.y) < 20 ) {
         preCargo.x = cargo.x;
         preCargo.y = cargo.y;
-        robotBeforeContact.x = robot.x;         // update robotBeforeContact pos. only when cargo pos. is valid
-        robotBeforeContact.y = robot.y;
+        /* update robot pos. memo. when contact has not happened */
+        if (!fContact) {
+            robotBeforeContact.x = robot.x;         // update robotBeforeContact pos. only when cargo pos. is valid
+            robotBeforeContact.y = robot.y;
+        }
+
         return 1;
     } else {        // if cargo pos. is not valid, do not update dis.
         cargo.x = preCargo.x;
@@ -55,7 +59,7 @@ void MMC_Controller :: update_goal_info_using_cargo_pos (void) {
 /* set the goal of controller to be above detected cargo position */
 void MMC_Controller :: update_goal_info_using_cargo_pos_for_rect_robot (void) {
     goal.x = cargo.x;
-    goal.y = cargo.y + 100;
+    goal.y = robot.y;
     dis    = sqrt  ( pow ( goal.x - robot.x, 2 ) + pow ( goal.y - robot.y, 2 ) );
     angle  = atan2 ( goal.y - robot.y, goal.x - robot.x) * 180.0 / M_PI;
     printf("goal (%d, %d), dis %.3f, angle %.3f\n", goal.x, goal.y, dis, angle);
@@ -78,7 +82,7 @@ int MMC_Controller :: check_contact (int data) {
     int dis_threshold = 60;             // threshold for decide contact
     switch (data) {
         case 0: dis_threshold = 60; break;              // circular cargo
-        case 1: dis_threshold = 76; break;              // rectangular cargo
+        case 1: dis_threshold = 90; break;              // rectangular cargo
         case 2: dis_threshold = 70; break;
     }
   if (dis < dis_threshold)           // if pre. distance is < threshold, then contact happened

@@ -253,6 +253,10 @@ static void* actuationRectRobot_THREAD ( void *threadid ) {
 
     /* start low-level coil thread: output sawtooth wave */
     start_coil_thread ();                   // coil.cpp
+    pause_coil_output (1);
+    my_sleep(1000);
+    pause_coil_output (0);
+    switch_to_gradient_mode ();         // coil.cpp
 
     while (fThread) {
         presentTime = get_present_time ();
@@ -304,18 +308,23 @@ static void* actuationRectRobot_THREAD ( void *threadid ) {
                             contactPos[0] = ctr.robot.x;  // record the robot position when contact happens
                             contactPos[1] = ctr.robot.y;
                             contactTime = presentTime;
+                            pause_coil_output (1);
                             printf("robot has touched cargo at time %.3f.\n", contactTime);
+                            my_sleep(1000);
+                            pause_coil_output (0);
                         }                               // otherwise just igore this detection
                     }
                 } else {                      // if contact has happened
-                    switch_to_gradient_mode ();         // coil.cpp
                     float tempDis = sqrt  (   pow ( ctr.robot.x - contactPos[0], 2 )
                                             + pow ( ctr.robot.y - contactPos[1], 2 ) ); // dis. between current pos. and contact pos.
                     printf("dis. between current pos. and contact pos. %.3f.\n", tempDis);
                     if ( (tempDis > 30) && (ctr.robot_away_from_init_pos()) ) {
+                        pause_coil_output (1);
                         ctr.state = 3;
                         printf("reach state 3.\n");
-                        switch_to_uniform_mode ();         // coil.cpp
+                        my_sleep (1000);
+                        pause_coil_output (0);
+                        //switch_to_uniform_mode ();         // coil.cpp
                     } else {
                         if ( ( (int)(presentTime - contactTime) ) > nSwitch * 2 ) {
                             nSwitch ++;

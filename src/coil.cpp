@@ -51,6 +51,7 @@ void Coil_System :: set_z_field_volt (float data) {
 
 /* send out signals to amplifiers */
 void Coil_System :: output_signal ( void ) {
+    /* in uniform field mode */
     if (!fGradient) {
         s826_aoPin(Coil_PZ, 2, uniformV[2]);     // output z first so that when clearing field the robot will not stand up
         s826_aoPin(Coil_NZ, 2, uniformV[2]);
@@ -60,6 +61,7 @@ void Coil_System :: output_signal ( void ) {
         s826_aoPin(Coil_PY, 2, uniformV[1]);
         s826_aoPin(Coil_NY, 2, uniformV[1]);
 
+    /* in gradient pulling mode */
     } else {
         if (uniformV[2] >= 0) {
             s826_aoPin(Coil_PZ, 2, uniformV[2]);
@@ -70,11 +72,11 @@ void Coil_System :: output_signal ( void ) {
         }
 
         if (uniformV[0] >= 0) {
-            s826_aoPin(Coil_PX, 2, uniformV[0]);
-            s826_aoPin(Coil_NX, 2, 0);
+            s826_aoPin(Coil_PX, 2,        uniformV[0]);
+            s826_aoPin(Coil_NX, 2, -0.5 * uniformV[0]);     // apply some negative field on the other coil to create a stronger gradient (x coil is far away from workspace and gradient is not strong enough)
         } else {
-            s826_aoPin(Coil_PX, 2, 0);
-            s826_aoPin(Coil_NX, 2, uniformV[0]);
+            s826_aoPin(Coil_PX, 2, -0.5 * uniformV[0]);
+            s826_aoPin(Coil_NX, 2,        uniformV[0]);
         }
 
         if (uniformV[1] >= 0) {
@@ -111,6 +113,8 @@ void Coil_System :: rotate_to_new_angle ( void ) {
     /* gently rotate robot */
     uniformV[2] = 0;
     //fGradient = 1;
+    int memoFGradient = fGradient;              // remember the original value of fGradient
+    fGradient = 0;                              // use uniform field in rotation
     for (int i = 0; i < abs(del); i ++) {
         angleOld = angleOld + step;
         uniformV[0] = cosd(angleOld) * ampXY;
@@ -119,7 +123,7 @@ void Coil_System :: rotate_to_new_angle ( void ) {
         output_signal ();
         my_sleep(10);
     }
-    //fGradient = 0;
+    fGradient = memoFGradient;
     angleOld = angle;
 }
 
@@ -197,6 +201,7 @@ static void* coil_THREAD ( void *threadid ) {
             //printf("rotate to angle %.3f\n", newDirAngle);
             fDirChange = 0;
         } else {
+            /* running mode */
             if ( !fPause ) {
                 /* decide z field amplitude based on time, output physical signals */
                 while (fMoveDir);
@@ -204,10 +209,17 @@ static void* coil_THREAD ( void *threadid ) {
                 myCoil.set_z_field_volt ( (moveDir * 2 - 1 ) * ampZ * timeElapsed / periodTime );
                 fMoveDir = 0;
                 myCoil.output_signal ();
+                //printf("outputing signals.\n");
+            /* paused mode */
+            } else {
+                myCoil.set_z_field_volt ( 0 );
+                int memoFGradient = fGradient;
+                fGradient = 0;
+                myCoil.output_signal ();
+                fGradient = memoFGradient;
             }
             my_sleep(10);
         }
-
     }
     myCoil.stop_output();
     s826_close();
@@ -254,9 +266,11 @@ void pause_coil_output (int data) {
     fPause = data;
 }
 
+/* use gradient instead of uniform field to actuation robot */
 void switch_to_gradient_mode (void) {
     fGradient = 1;
     tiltAngle = 5;
+    ampXY = 3.0;                        // Volt. give a stronger signal for gradient pulling
     ampZ  = ampXY * tand(tiltAngle);
 }
 
