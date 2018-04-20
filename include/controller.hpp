@@ -24,6 +24,7 @@ class MMC_Controller {
         int robot_away_from_init_pos (void);        // check if robot is away from the pos. where it is before contact. For cases that robot touches cargo then not touches it in following frames
         void calc_angle_difference_to_desired_line (void);  // calc. the angle difference between (robot - cargo) and (cargo heading)
 
+        float trueRobotSize, trueCargoSize, robotSize, cargoSize;
     private:
         cv :: Point preRobot, preCargo;   // previous center point information of robot and cargo
 };

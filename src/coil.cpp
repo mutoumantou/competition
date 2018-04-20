@@ -223,7 +223,7 @@ static void* coil_THREAD ( void *threadid ) {
     }
     myCoil.stop_output();
     s826_close();
-    printf("at the start of coil_THREAD.\n");
+    printf("at the stop of coil_THREAD.\n");
 }
 
 /* start low-level coil thread: output sawtooth wave */

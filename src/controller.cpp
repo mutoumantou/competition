@@ -14,37 +14,46 @@ MMC_Controller :: MMC_Controller () {
     fContact = 0;
     state = 0;
     angleDiff = 0.0;            // the angle difference between (robot - cargo) and (cargo heading)
+    robotSize = 0;
+    cargoSize = 0;
+    trueRobotSize=0; trueCargoSize=0;
 }
 
-/*
-output: 1: valid new position; 0: cargo pos not valid
-intput: 0: 1st run, use for preCargo and preRobot; 1: following runs
-robot pos. is considered to be always valid
+/*  intput: 0: 1st run, use for preCargo and preRobot; 1: following runs
+    output: 1: valid new position; 0: cargo pos not valid
+    robot pos. is considered to be always valid
 */
 int MMC_Controller :: get_latest_pos (int data) {
-  if (data) {
-    return_center_pt_info ( &robot, &cargo, &cargoAngle );
-    //printf("robot (%d, %d) cargo (%d, %d), cargoAngle %.3f\n", robot.x, robot.y, cargo.x, cargo.y, cargoAngle);
-    preRobot.x = robot.x;
-    preRobot.y = robot.y;
-    if ( abs(cargo.x - preCargo.x) < 20 && abs(cargo.y - preCargo.y) < 20 ) {
-        preCargo.x = cargo.x;
-        preCargo.y = cargo.y;
-        /* update robot pos. memo. when contact has not happened */
-        if (!fContact) {
-            robotBeforeContact.x = robot.x;         // update robotBeforeContact pos. only when cargo pos. is valid
-            robotBeforeContact.y = robot.y;
+    /* not init. run */
+    if (data) {
+        return_center_pt_info ( &robot, &cargo, &cargoAngle );
+        return_size_info ( &robotSize, &cargoSize );
+        printf("robot size %.1f, cargo size %.1f, true cargo size %.1f\n", robotSize, cargoSize, trueCargoSize);
+        //printf("robot (%d, %d) cargo (%d, %d), cargoAngle %.3f\n", robot.x, robot.y, cargo.x, cargo.y, cargoAngle);
+        preRobot.x = robot.x;
+        preRobot.y = robot.y;
+        //if ( abs(cargo.x - preCargo.x) < 20 && abs(cargo.y - preCargo.y) < 20 ) {
+        if ( (cargoSize >= trueCargoSize - 400) && (cargoSize <= trueCargoSize + 400) ) {
+            preCargo.x = cargo.x;
+            preCargo.y = cargo.y;
+            /* update robot pos. memo. when contact has not happened */
+            if (!fContact) {
+                robotBeforeContact.x = robot.x;         // update robotBeforeContact pos. only when cargo pos. is valid
+                robotBeforeContact.y = robot.y;
+            }
+            return 1;
+        } else {        // if cargo pos. is not valid, do not update dis.
+            cargo.x = preCargo.x;
+            cargo.y = preCargo.y;
+            return 0;
         }
-
+    /* init. run */
+    } else {
+        return_center_pt_info ( &preRobot, &preCargo, &cargoAngle );
+        return_size_info ( &trueRobotSize, &trueCargoSize );
+        printf("robot size %.1f, cargo size %.1f\n", trueRobotSize, trueCargoSize);
         return 1;
-    } else {        // if cargo pos. is not valid, do not update dis.
-        cargo.x = preCargo.x;
-        cargo.y = preCargo.y;
-        return 0;
     }
-  }
-  return_center_pt_info ( &preRobot, &preCargo, &cargoAngle );
-  return 1;
 }
 
 /* set the goal of controller to be the detected cargo position */
@@ -79,16 +88,16 @@ output: 1: contact happens; 0: contact not happen
 this fun. is only called when cargo is not correctly detected
 */
 int MMC_Controller :: check_contact (int data) {
-    int dis_threshold = 60;             // threshold for decide contact
-    switch (data) {
-        case 0: dis_threshold = 60; break;              // circular cargo
-        case 1: dis_threshold = 90; break;              // rectangular cargo
-        case 2: dis_threshold = 70; break;
-    }
-  if (dis < dis_threshold)           // if pre. distance is < threshold, then contact happened
-    fContact = 1;
+    // int dis_threshold = 60;             // threshold for decide contact
+    // switch (data) {
+    //     case 0: dis_threshold = 60; break;              // circular cargo
+    //     case 1: dis_threshold = 90; break;              // rectangular cargo
+    //     case 2: dis_threshold = 70; break;
+    // }
+    // if (dis < dis_threshold)           // if pre. distance is < threshold, then contact happened
+        fContact = 1;
                           // else, just a wrong detection, ignore this detection
-  return fContact;
+    return fContact;
 }
 
 int MMC_Controller :: robot_away_from_init_pos (void) {

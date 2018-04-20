@@ -10,6 +10,7 @@ static int fSim = 0;                            // 0: real experiment; 1: simula
 static int thresholdPara = 65;
 static int iCargo = 0;                          // cargo type. 0: circle; 1: rectangle; 2: triangle
 static Point robotPos, cargoPos;
+static float robotSize, cargoSize;              // size of robot and cargo in pixels
 static int fRobotPos=0, fCargoPos=0;                    // data lock
 
 static float robotAngle = 0, cargoAngle = 0;                            // cargo orientation
@@ -46,7 +47,7 @@ class Vision_Master {
         void find_contours      (void);
         void sort_contours      (void);
         void get_bounding_rect  (void);
-        void update_robot_and_cargo_pos   (void);
+        void update_robot_and_cargo_pos_and_size (void);
         void draw_detection     (void);
         void update_robot_and_cargo_angle (void);
         void draw_digital_arena (void);
@@ -117,12 +118,13 @@ void Vision_Master :: get_bounding_rect (void) {
 
 }
 
-void Vision_Master :: update_robot_and_cargo_pos (void) {
+void Vision_Master :: update_robot_and_cargo_pos_and_size (void) {
     if (nContours >= 1) {
         while (fRobotPos);
         fRobotPos = 1;
         robotPos.x = boundingRect1.center.x;
         robotPos.y = boundingRect1.center.y;
+        robotSize = boundingRect1.size.width * boundingRect1.size.height;
         fRobotPos = 0;
 
         if ( nContours < 2 ) {
@@ -130,6 +132,7 @@ void Vision_Master :: update_robot_and_cargo_pos (void) {
             fCargoPos = 1;
             cargoPos.x = 0;
             cargoPos.y = 0;
+            cargoSize = 0;
             fCargoPos = 0;
         } else {
             while (fCargoPos);
@@ -137,9 +140,11 @@ void Vision_Master :: update_robot_and_cargo_pos (void) {
             if (iCargo == 0) {                  // when cargo is a circle
                 cargoPos.x = circleCenter.x;
                 cargoPos.y = circleCenter.y;
+                cargoSize = M_PI * circleRadius * circleRadius;
             } else {
                 cargoPos.x = boundingRect2.center.x;
                 cargoPos.y = boundingRect2.center.y;
+                cargoSize = boundingRect2.size.width * boundingRect2.size.height;
             }
             fCargoPos = 0;
         }
@@ -275,7 +280,7 @@ static void* video_stream_THREAD ( void *threadid ) {
 
         myVision.get_bounding_rect ();
 
-        myVision.update_robot_and_cargo_pos ();
+        myVision.update_robot_and_cargo_pos_and_size ();
         myVision.draw_detection ();
         myVision.update_robot_and_cargo_angle ();
 
@@ -360,6 +365,12 @@ void return_center_pt_info ( Point *robot, Point *cargo, float *angle) {
     fCargoAngle = 1;
     (*angle) = cargoAngle;
     fCargoAngle = 0;
+}
+
+/* return the size in pixels of robot and cargo */
+void return_size_info ( float *size1, float *size2 ) {
+    *size1 = robotSize;
+    *size2 = cargoSize;
 }
 
 void on_cB_simulation_toggled (GtkToggleButton *togglebutton, gpointer data) {

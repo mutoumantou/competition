@@ -33,6 +33,7 @@ void get_present_image ( Mat * container );
 
 void return_center_pt_info ( Point *robot, Point *cargo, float *angle );  // return current position information of robot and cargo to controller
 
+void return_size_info ( float *size1, float *size2 );           // return the size in pixels of robot and cargo
 int get_cargo_type (void);
 
 #endif

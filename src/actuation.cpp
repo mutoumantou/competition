@@ -1,6 +1,6 @@
 #include "actuation.hpp"
 
-static int fThread = 0;             // flag of thread running
+static int fThread = 0;             // flag of thread running; 1 file should only have 1 thread running at the same time
 //static int fGradient = 0;           // 0: use uniform field; 1: use gradient field
 static int directionCode = 0;      // -1: neutral; 0: +x; 1: +y; 2: -x; 3: -y
 static int fKey = 0;                // if a key has been pressed, request reviewing direction
@@ -344,6 +344,88 @@ static void* actuationRectRobot_THREAD ( void *threadid ) {
                     break;
                 }
 
+                if (rst) {
+                    printf("robot loses its cargo\n");
+                    int deltaX = 0, deltaY = 0;
+                    if (ctr.cargo.x > wayPoint_x[iWaypoint])
+                        deltaX = ctr.cargo.x - wayPoint_x[iWaypoint];
+                    else
+                        deltaX = wayPoint_x[iWaypoint] - ctr.cargo.x;
+                    if (ctr.cargo.y > wayPoint_y[iWaypoint])
+                        deltaY = ctr.cargo.y - wayPoint_y[iWaypoint];
+                    else
+                        deltaY = wayPoint_y[iWaypoint] - ctr.cargo.y;
+
+                    if (deltaX >= deltaY) {
+                        printf(" primary coord. is x\n");
+                        while ( (ctr.robot.x - (ctr.cargo.x+100) > 100) || ((ctr.cargo.x+100) - ctr.robot.x > 100) ) {
+                            if (ctr.robot.x > (ctr.cargo.x+100)) {
+                                change_moving_angle ( 180 );
+                                my_sleep(10);
+                            } else {
+                                change_moving_angle ( 0 );
+                                my_sleep(10);
+                            }
+                            rst = ctr.get_latest_pos (1);
+                        }
+                        while ( (ctr.robot.y - ctr.cargo.y > 30) || (ctr.cargo.y - ctr.robot.y > 30) ) {
+                            if (ctr.robot.y > ctr.cargo.y) {
+                                change_moving_angle ( -90 );
+                                my_sleep(10);
+                            } else {
+                                change_moving_angle ( 90 );
+                                my_sleep(10);
+                            }
+                            rst = ctr.get_latest_pos (1);
+                        }
+                        printf("after adjusting y\n");
+                        while (rst) {
+                            if (ctr.robot.x > ctr.cargo.x) {
+                                change_moving_angle ( 180 );
+                                my_sleep(10);
+                            } else {
+                                change_moving_angle ( 0 );
+                                my_sleep(10);
+                            }
+                            rst = ctr.get_latest_pos (1);
+                        }
+                        printf("after adjusting x\n");
+                    } else {
+                        printf(" primary coord. is y\n");
+                        while ( (ctr.robot.y - (ctr.cargo.y-100) > 100) || ((ctr.cargo.y-100) - ctr.robot.y > 100) ) {
+                            if (ctr.robot.y > (ctr.cargo.y-100)) {
+                                change_moving_angle ( -90 );
+                                my_sleep(10);
+                            } else {
+                                change_moving_angle ( 90 );
+                                my_sleep(10);
+                            }
+                            rst = ctr.get_latest_pos (1);
+                        }
+                        while ( (ctr.robot.x - ctr.cargo.x > 30) || (ctr.cargo.x - ctr.robot.x > 30) ) {
+                            if (ctr.robot.x > ctr.cargo.x) {
+                                change_moving_angle ( 180 );
+                                my_sleep(10);
+                            } else {
+                                change_moving_angle ( 0 );
+                                my_sleep(10);
+                            }
+                            rst = ctr.get_latest_pos (1);
+                        }
+                        printf("after adjusting x\n");
+                        while (rst) {
+                            if (ctr.robot.y > ctr.cargo.y) {
+                                change_moving_angle ( -90 );
+                                my_sleep(10);
+                            } else {
+                                change_moving_angle ( 90 );
+                                my_sleep(10);
+                            }
+                            rst = ctr.get_latest_pos (1);
+                        }
+                        printf("after adjusting y\n");
+                    }
+                }
                 movingAngle = atan2(wayPoint_y[iWaypoint] - ctr.robot.y, wayPoint_x[iWaypoint] - ctr.robot.x) * 180.0 / M_PI;
                 printf("waypoint (%d, %d), robot (%d, %d), angle %.3f\n", wayPoint_x[iWaypoint], wayPoint_y[iWaypoint],ctr.robot.x, ctr.robot.y, movingAngle);
                 change_moving_angle (  movingAngle );
